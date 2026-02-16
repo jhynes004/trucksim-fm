@@ -60,7 +60,21 @@ class SpotifyTrackResponse(BaseModel):
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"status": "ok", "message": "TruckSimFM API is running"}
+
+# Health check endpoint on main app
+@app.get("/")
+async def app_root():
+    return {
+        "app": "TruckSim FM",
+        "status": "running",
+        "api_endpoints": "/api",
+        "message": "Visit /api for API endpoints. Frontend is served separately."
+    }
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "TruckSim FM API"}
 
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
