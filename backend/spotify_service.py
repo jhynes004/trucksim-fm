@@ -175,24 +175,28 @@ class SpotifyService:
             logger.info(f'Trying strict search: artist:"{clean_artist}" track:"{clean_title}"')
             query = f'artist:"{clean_artist}" track:"{clean_title}"'
             result = self._search_with_query(token, query)
-            if result:
+            if result and self._validate_match(result, artist, title):
                 logger.info(f'✓ Found match with strict search for: {artist} - {title}')
+                # Remove internal data before returning
+                result.pop('_all_results', None)
                 return result
             
             # Strategy 2: Less strict with unquoted terms
             logger.info(f'Trying unquoted search: artist:{clean_artist} track:{clean_title}')
             query = f'artist:{clean_artist} track:{clean_title}'
             result = self._search_with_query(token, query)
-            if result:
+            if result and self._validate_match(result, artist, title):
                 logger.info(f'✓ Found match with unquoted search for: {artist} - {title}')
+                result.pop('_all_results', None)
                 return result
             
             # Strategy 3: General search with both terms (no field specifiers)
             logger.info(f'Trying general search: {clean_artist} {clean_title}')
             query = f'{clean_artist} {clean_title}'
             result = self._search_with_query(token, query, limit=5)
-            if result:
+            if result and self._validate_match(result, artist, title):
                 logger.info(f'✓ Found match with general search for: {artist} - {title}')
+                result.pop('_all_results', None)
                 return result
             
             # Strategy 4: Search with original (uncleaned) terms
@@ -200,16 +204,18 @@ class SpotifyService:
                 logger.info(f'Trying original terms: {artist} {title}')
                 query = f'{artist} {title}'
                 result = self._search_with_query(token, query, limit=5)
-                if result:
+                if result and self._validate_match(result, artist, title):
                     logger.info(f'✓ Found match with original terms for: {artist} - {title}')
+                    result.pop('_all_results', None)
                     return result
             
             # Strategy 5: Try just the track title (for cases where artist might be wrong/misspelled)
             logger.info(f'Trying title-only search: {clean_title}')
             query = f'track:"{clean_title}"'
             result = self._search_with_query(token, query, limit=5)
-            if result:
+            if result and self._validate_match(result, artist, title):
                 logger.info(f'✓ Found match with title-only search for: {artist} - {title}')
+                result.pop('_all_results', None)
                 return result
             
             logger.warning(f'✗ No Spotify results found after all strategies for: {artist} - {title}')
