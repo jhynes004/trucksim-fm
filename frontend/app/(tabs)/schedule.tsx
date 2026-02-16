@@ -332,7 +332,6 @@ const styles = StyleSheet.create({
   },
   daySelectorContent: {
     paddingHorizontal: 16,
-    gap: 8,
   },
   dayButton: {
     paddingHorizontal: 20,
