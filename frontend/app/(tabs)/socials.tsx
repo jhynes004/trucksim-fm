@@ -87,7 +87,11 @@ export default function SocialsScreen() {
             activeOpacity={0.7}
           >
             <View style={[styles.iconContainer, { backgroundColor: link.color }]}>
-              <Text style={styles.socialIcon}>{link.icon}</Text>
+              <Image 
+                source={link.logo} 
+                style={styles.socialLogo}
+                resizeMode="contain"
+              />
             </View>
             
             <View style={styles.socialInfo}>
