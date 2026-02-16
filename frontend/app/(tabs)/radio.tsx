@@ -555,13 +555,11 @@ export default function RadioScreen() {
                 </Text>
               </View>
               <View style={styles.recentTrackRight}>
-                {track.likes > 0 && (
-                  <View style={styles.likeDisplay}>
-                    <Text style={styles.likeText}>
-                      👍 {track.likes}
-                    </Text>
-                  </View>
-                )}
+                <View style={styles.likeDisplay}>
+                  <Text style={styles.likeText}>
+                    👍 {track.likes}
+                  </Text>
+                </View>
                 <Text style={styles.recentTrackTime}>
                   {formatPlayedTime(track.played_at)}
                 </Text>
