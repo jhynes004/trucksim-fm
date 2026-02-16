@@ -48,18 +48,24 @@ export default function SocialsScreen() {
   
   const openSocialLink = async (link: SocialLink) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Linking.canOpenURL(link.url)
-      .then((supported) => {
+    
+    try {
+      // Try to open the URL directly - this works better on Android APK builds
+      await Linking.openURL(link.url);
+    } catch (err) {
+      console.error(`Error opening ${link.name}:`, err);
+      // If direct open fails, try with canOpenURL check as fallback
+      try {
+        const supported = await Linking.canOpenURL(link.url);
         if (supported) {
-          return Linking.openURL(link.url);
+          await Linking.openURL(link.url);
         } else {
-          Alert.alert('Error', `Cannot open ${link.name}`);
+          Alert.alert('Error', `Cannot open ${link.name}. Please make sure you have a browser installed.`);
         }
-      })
-      .catch((err) => {
-        console.error(`Error opening ${link.name}:`, err);
+      } catch (fallbackErr) {
         Alert.alert('Error', `Failed to open ${link.name}`);
-      });
+      }
+    }
   };
 
   return (
