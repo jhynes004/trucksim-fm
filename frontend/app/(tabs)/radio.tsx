@@ -17,9 +17,9 @@ import Animated, {
   Easing,
   cancelAnimation,
 } from 'react-native-reanimated';
-import { Colors } from '@/constants/colors';
-import { getCurrentSong, CurrentSong } from '@/services/radioService';
-import { searchSpotifyTrack, SpotifyTrack } from '@/services/spotifyService';
+import { Colors } from '../../constants/colors';
+import { getCurrentSong, CurrentSong } from '../../services/radioService';
+import { searchSpotifyTrack, SpotifyTrack } from '../../services/spotifyService';
 
 const { width } = Dimensions.get('window');
 const TURNTABLE_SIZE = width * 0.7;
