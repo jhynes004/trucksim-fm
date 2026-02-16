@@ -9,11 +9,13 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 import uuid
 from datetime import datetime
-from spotify_service import spotify_service
 
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# Import SpotifyService AFTER loading environment variables
+from spotify_service import SpotifyService
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -25,6 +27,9 @@ app = FastAPI()
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
+
+# Initialize Spotify service AFTER env vars are loaded
+spotify_service = SpotifyService()
 
 
 # Define Models
