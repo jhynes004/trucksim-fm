@@ -125,7 +125,7 @@ export default function RadioScreen() {
     }
   };
 
-  const onPlaybackStatusUpdate = (status: any) => {
+  const onPlaybackStatusUpdate = (status) => {
     if (status.error) {
       console.error('Playback status error:', status.error);
       setError('Stream playback error');
