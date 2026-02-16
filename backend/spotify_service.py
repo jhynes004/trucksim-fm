@@ -107,12 +107,56 @@ class SpotifyService:
                     'release_date': album.get('release_date'),
                     'spotify_url': track.get('external_urls', {}).get('spotify'),
                     'duration_ms': track.get('duration_ms'),
-                    'preview_url': track.get('preview_url')
+                    'preview_url': track.get('preview_url'),
+                    '_all_results': tracks  # Store all results for validation
                 }
             return None
         except Exception as e:
             logger.error(f'Error in Spotify search query "{query}": {e}')
             return None
+    
+    def _validate_match(self, result: Dict[str, Any], original_artist: str, original_title: str) -> bool:
+        """Validate if a Spotify result is likely a correct match"""
+        if not result:
+            return False
+        
+        import re
+        
+        # Normalize strings for comparison
+        def normalize(s: str) -> str:
+            s = s.lower()
+            # Remove common separators and special chars
+            s = re.sub(r'[&,x\-\+\(\)\[\]\'"]', ' ', s)
+            # Remove extra whitespace
+            s = ' '.join(s.split())
+            return s
+        
+        result_title = normalize(result.get('title', ''))
+        result_artist = normalize(result.get('artist', ''))
+        search_title = normalize(original_title)
+        search_artist = normalize(original_artist)
+        
+        # Check if the title matches (at least 80% of words)
+        title_words = set(search_title.split())
+        result_title_words = set(result_title.split())
+        
+        if title_words and result_title_words:
+            title_overlap = len(title_words & result_title_words) / len(title_words)
+            if title_overlap < 0.5:  # Less than 50% overlap is suspicious
+                logger.info(f"Title match low: {title_overlap:.0%} overlap")
+                return False
+        
+        # Check if artist appears in result
+        artist_words = set(search_artist.split())
+        result_artist_words = set(result_artist.split())
+        
+        if artist_words and result_artist_words:
+            artist_overlap = len(artist_words & result_artist_words) / len(artist_words)
+            if artist_overlap < 0.3:  # Less than 30% overlap might be wrong
+                logger.info(f"Artist match low: {artist_overlap:.0%} overlap")
+                # Don't reject, but log it
+        
+        return True
     
     def search_track(self, artist: str, title: str) -> Optional[Dict[str, Any]]:
         """Search for a track on Spotify with multiple fallback strategies"""
