@@ -7,13 +7,14 @@ import { Colors } from '../../constants/colors';
 const STATS_URL = 'https://radiostats.info';
 
 export default function StatsScreen() {
+  const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
 
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <Text style={styles.title}>Listener Stats</Text>
         <Text style={styles.subtitle}>Live statistics from radiostats.info</Text>
       </View>
@@ -58,7 +59,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
-    paddingTop: 60,
+    paddingTop: 20,
     paddingBottom: 16,
     paddingHorizontal: 24,
     alignItems: 'center',

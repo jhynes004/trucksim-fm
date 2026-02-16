@@ -43,6 +43,8 @@ const SOCIAL_LINKS: SocialLink[] = [
 ];
 
 export default function SocialsScreen() {
+  const insets = useSafeAreaInsets();
+  
   const openSocialLink = (link: SocialLink) => {
     Linking.canOpenURL(link.url)
       .then((supported) => {
@@ -61,7 +63,7 @@ export default function SocialsScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <Text style={styles.title}>Connect With Us</Text>
         <Text style={styles.subtitle}>
           Follow TruckSimFM on social media
@@ -121,7 +123,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
-    paddingTop: 60,
+    paddingTop: 20,
     paddingBottom: 20,
     paddingHorizontal: 24,
     alignItems: 'center',
