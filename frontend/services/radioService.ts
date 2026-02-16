@@ -29,29 +29,36 @@ export const getCurrentSong = async (): Promise<CurrentSong> => {
       timeout: 5000,
     });
     
-    // The response might be in different formats, let's handle text
     const data = response.data;
-    console.log('[RadioService] Current song raw data:', data);
+    console.log('[RadioService] Raw response:', JSON.stringify(data));
+    console.log('[RadioService] Response type:', typeof data);
     
     // If it's a string, try to parse it
     if (typeof data === 'string') {
       const trimmed = data.trim();
+      console.log('[RadioService] Trimmed string:', trimmed);
       
       // Common format: "artist - title" (case-insensitive)
       const dashIndex = trimmed.indexOf(' - ');
+      console.log('[RadioService] Dash index:', dashIndex);
+      
       if (dashIndex > 0) {
         const artist = trimmed.substring(0, dashIndex).trim();
         const title = trimmed.substring(dashIndex + 3).trim();
         
         console.log('[RadioService] Parsed - Artist:', artist, 'Title:', title);
         
-        return {
+        const result = {
           artist: titleCase(artist),
           title: titleCase(title),
           rawData: data,
         };
+        
+        console.log('[RadioService] Final result:', result);
+        return result;
       }
       
+      console.log('[RadioService] No dash found, returning as title only');
       // If no dash found, return as title
       return {
         title: titleCase(trimmed),
@@ -60,6 +67,7 @@ export const getCurrentSong = async (): Promise<CurrentSong> => {
       };
     }
     
+    console.log('[RadioService] Data is object, not string');
     // If it's already an object
     return {
       title: data.title || data.song || '',
@@ -68,7 +76,10 @@ export const getCurrentSong = async (): Promise<CurrentSong> => {
       rawData: JSON.stringify(data),
     };
   } catch (error) {
-    console.error('[RadioService] Failed to fetch current song:', error);
+    console.error('[RadioService] Error:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('[RadioService] Axios error:', error.message, error.response?.status);
+    }
     return {
       title: 'TruckSimFM',
       artist: 'Live Radio',
