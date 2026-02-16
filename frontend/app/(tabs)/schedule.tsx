@@ -244,8 +244,14 @@ export default function ScheduleScreen() {
             </Text>
           </View>
         ) : (
-          filteredSchedule.map((show) => (
-            <View key={show.id} style={styles.showCard}>
+          filteredSchedule.map((show, index) => (
+            <View 
+              key={show.id} 
+              style={[
+                styles.showCard,
+                index < filteredSchedule.length - 1 && { marginBottom: 16 }
+              ]}
+            >
               {/* Time Badge */}
               <View style={styles.timeBadge}>
                 <Text style={styles.timeText}>
