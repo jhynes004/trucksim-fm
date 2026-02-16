@@ -23,6 +23,7 @@ interface ScheduleShow {
   start_time: string;
   end_time: string;
   permanent: boolean;
+  perm_end: string | null;
   excluded_dates: string[] | null;
   presenter: {
     username: string;
