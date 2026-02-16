@@ -49,6 +49,7 @@ export default function RadioScreen() {
   });
   const [spotifyData, setSpotifyData] = useState<SpotifyTrack | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fetchStatus, setFetchStatus] = useState<string>('');
   const songUpdateInterval = useRef<NodeJS.Timeout | null>(null);
   const lastSearchedSong = useRef<string>('');
 
@@ -65,17 +66,15 @@ export default function RadioScreen() {
   // Start/stop rotation based on playback state
   useEffect(() => {
     if (isPlaying) {
-      // Start continuous rotation
       rotation.value = withRepeat(
         withTiming(360, {
           duration: 3000,
           easing: Easing.linear,
         }),
-        -1, // infinite repeat
+        -1,
         false
       );
     } else {
-      // Stop rotation smoothly
       cancelAnimation(rotation);
       rotation.value = withTiming(Math.floor(rotation.value / 360) * 360, {
         duration: 500,
@@ -99,9 +98,7 @@ export default function RadioScreen() {
   // Update current song periodically
   useEffect(() => {
     if (isPlaying) {
-      // Update immediately
       updateCurrentSong();
-      // Then update every 10 seconds
       songUpdateInterval.current = setInterval(() => {
         updateCurrentSong();
       }, 10000);
@@ -121,56 +118,47 @@ export default function RadioScreen() {
 
   const updateCurrentSong = async () => {
     try {
-      console.log('=== [Radio] Fetching current song... ===');
+      setFetchStatus('Fetching song...');
       const song = await getCurrentSong();
-      console.log('[Radio] Got current song:', song);
       
-      // Always update the current song display
+      setFetchStatus(`Got: ${song.artist} - ${song.title}`);
       setCurrentSong(song);
 
-      // If we have artist and title, search Spotify
       if (song.artist && song.title && 
           song.artist !== 'Unknown Artist' && 
           song.title !== 'TruckSimFM') {
         const songKey = `${song.artist.toLowerCase()}-${song.title.toLowerCase()}`;
-        console.log('[Radio] Song key:', songKey);
-        console.log('[Radio] Last searched:', lastSearchedSong.current);
         
-        // Only search if it's a different song
         if (songKey !== lastSearchedSong.current) {
           lastSearchedSong.current = songKey;
-          console.log('[Radio] NEW SONG - Searching Spotify for:', song.artist, '-', song.title);
+          setFetchStatus('Searching Spotify...');
           
           const spotifyResult = await searchSpotifyTrack(song.artist, song.title);
-          console.log('[Radio] Spotify result received:', spotifyResult);
           
           if (spotifyResult && spotifyResult.album_art_url) {
-            console.log('[Radio] ✅ Setting Spotify data with album art:', spotifyResult.album_art_url);
+            setFetchStatus('✓ Spotify loaded');
             setSpotifyData(spotifyResult);
           } else {
-            console.log('[Radio] ❌ No album art found in Spotify result');
-            // Clear spotify data if no results
+            setFetchStatus('No Spotify match');
             setSpotifyData(null);
           }
-        } else {
-          console.log('[Radio] Same song, skipping Spotify search');
+          
+          // Clear status after 3 seconds
+          setTimeout(() => setFetchStatus(''), 3000);
         }
       } else {
-        console.log('[Radio] Missing artist or title, skipping Spotify:', {
-          artist: song.artist,
-          title: song.title,
-        });
+        setFetchStatus('Waiting for song...');
+        setTimeout(() => setFetchStatus(''), 3000);
       }
     } catch (error) {
-      console.error('[Radio] Error updating current song:', error);
+      setFetchStatus('Error fetching data');
+      setTimeout(() => setFetchStatus(''), 3000);
     }
   };
 
   const togglePlayback = async () => {
     try {
       if (isPlaying && sound) {
-        // Stop completely
-        console.log('[Radio] Stopping playback...');
         await sound.stopAsync();
         await sound.unloadAsync();
         setSound(null);
@@ -181,9 +169,8 @@ export default function RadioScreen() {
         });
         setSpotifyData(null);
         lastSearchedSong.current = '';
+        setFetchStatus('');
       } else {
-        // Play
-        console.log('[Radio] Starting playback...');
         setIsLoading(true);
         setError(null);
 
@@ -196,10 +183,8 @@ export default function RadioScreen() {
         setSound(newSound);
         setIsPlaying(true);
         setIsLoading(false);
-        console.log('[Radio] ✅ Playback started successfully');
       }
     } catch (err) {
-      console.error('[Radio] Playback error:', err);
       setError('Failed to play stream');
       setIsLoading(false);
       setIsPlaying(false);
@@ -208,16 +193,12 @@ export default function RadioScreen() {
 
   const onPlaybackStatusUpdate = (status) => {
     if (status.error) {
-      console.error('[Radio] Playback status error:', status.error);
       setError('Stream playback error');
       setIsPlaying(false);
     }
   };
 
-  // Determine which image to show on turntable
   const albumArtUrl = spotifyData?.album_art_url || LOGO_URL;
-  
-  // Determine what to display
   const displayTitle = spotifyData?.title || currentSong.title || 'TruckSimFM';
   const displayArtist = spotifyData?.artist || currentSong.artist || 'Live Radio';
   const displayAlbum = spotifyData?.album;
@@ -239,17 +220,12 @@ export default function RadioScreen() {
 
       {/* Turntable with Rotation Animation */}
       <View style={styles.turntableContainer}>
-        <Animated.View
-          style={[styles.turntable, animatedStyle]}
-        >
+        <Animated.View style={[styles.turntable, animatedStyle]}>
           <Image
             source={{ uri: albumArtUrl }}
             style={styles.albumArt}
             resizeMode="cover"
-            onError={(e) => console.log('[Radio] Image load error:', e.nativeEvent.error)}
-            onLoad={() => console.log('[Radio] ✅ Image loaded successfully:', albumArtUrl)}
           />
-          {/* Vinyl effect */}
           <View style={styles.vinylCenter} />
         </Animated.View>
       </View>
@@ -268,6 +244,13 @@ export default function RadioScreen() {
           </Text>
         )}
       </View>
+
+      {/* Status Indicator */}
+      {fetchStatus && (
+        <View style={styles.statusIndicator}>
+          <Text style={styles.statusText}>{fetchStatus}</Text>
+        </View>
+      )}
 
       {/* Error Message */}
       {error && (
@@ -292,20 +275,13 @@ export default function RadioScreen() {
       </TouchableOpacity>
 
       {/* Stream Status */}
-      <Text style={styles.statusText}>
+      <Text style={styles.bottomStatusText}>
         {isLoading
           ? 'Connecting...'
           : isPlaying
           ? 'Now Playing'
           : 'Tap to Play'}
       </Text>
-      
-      {/* Debug info - remove in production */}
-      {__DEV__ && (
-        <Text style={styles.debugText}>
-          Backend: {process.env.EXPO_PUBLIC_BACKEND_URL || 'NOT SET'}
-        </Text>
-      )}
     </View>
   );
 }
@@ -383,7 +359,7 @@ const styles = StyleSheet.create({
   songInfo: {
     alignItems: 'center',
     paddingHorizontal: 32,
-    marginBottom: 32,
+    marginBottom: 16,
   },
   songTitle: {
     fontSize: 24,
@@ -402,6 +378,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textMuted,
     textAlign: 'center',
+  },
+  statusIndicator: {
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  statusText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '600',
   },
   errorContainer: {
     flexDirection: 'row',
@@ -430,17 +418,11 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  statusText: {
+  bottomStatusText: {
     fontSize: 14,
     color: Colors.textSecondary,
     fontWeight: '600',
   },
-  debugText: {
-    fontSize: 10,
-    color: Colors.textMuted,
-    marginTop: 8,
-  },
-  // Icon styles
   icon: {
     width: 48,
     height: 48,
