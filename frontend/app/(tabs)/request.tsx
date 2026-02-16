@@ -48,6 +48,7 @@ const REQUEST_TYPES: RequestTypeOption[] = [
 ];
 
 export default function RequestScreen() {
+  const insets = useSafeAreaInsets();
   const [requestType, setRequestType] = useState<RequestType>('song');
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [artistName, setArtistName] = useState('');
@@ -279,7 +280,7 @@ export default function RequestScreen() {
     >
       <ScrollView 
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
         keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
@@ -410,7 +411,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 24,
-    paddingTop: 60,
+    paddingTop: 20,
   },
   header: {
     marginBottom: 24,
