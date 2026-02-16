@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { View } from 'react-native';
-import { Colors } from '@/constants/colors';
+import { Colors } from '../../constants/colors';
 
 // Simple icon components using basic shapes
 const RadioIcon = ({ color }: { color: string }) => (
