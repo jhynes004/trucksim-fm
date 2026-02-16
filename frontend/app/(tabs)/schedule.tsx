@@ -377,7 +377,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
-    gap: 8,
   },
   timeText: {
     fontSize: 16,
@@ -387,9 +386,9 @@ const styles = StyleSheet.create({
   timeSeparator: {
     fontSize: 14,
     color: Colors.textMuted,
+    marginHorizontal: 8,
   },
   showContent: {
-    gap: 8,
   },
   showName: {
     fontSize: 20,
