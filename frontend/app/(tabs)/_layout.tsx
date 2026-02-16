@@ -124,40 +124,17 @@ const ChartIcon = ({ color }: { color: string }) => (
   </View>
 );
 
-const ShareIcon = ({ color }: { color: string }) => (
-  <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
-    <View style={{
-      width: 16,
-      height: 16,
-      borderRadius: 8,
-      borderWidth: 2,
-      borderColor: color,
-    }}>
-      <View style={{
-        position: 'absolute',
-        top: -8,
-        left: 5,
-        width: 2,
-        height: 10,
-        backgroundColor: color,
-      }} />
-      <View style={{
-        position: 'absolute',
-        top: -10,
-        left: 1,
-        width: 0,
-        height: 0,
-        borderLeftWidth: 4,
-        borderRightWidth: 4,
-        borderBottomWidth: 6,
-        borderLeftColor: 'transparent',
-        borderRightColor: 'transparent',
-        borderBottomColor: color,
-      }} />
-    </View>
-  </View>
+const SocialsIcon = ({ color }: { color: string }) => (
+  <Image
+    source={require('../../assets/images/socials-icon.png')}
+    style={{ 
+      width: 24, 
+      height: 24, 
+      tintColor: color,
+    }}
+    resizeMode="contain"
+  />
 );
-
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   
