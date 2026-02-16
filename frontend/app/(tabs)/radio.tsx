@@ -10,30 +10,70 @@ import {
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  Easing,
+  cancelAnimation,
+} from 'react-native-reanimated';
 import { Colors } from '@/constants/colors';
-import { parsePlsPlaylist } from '@/services/plsParser';
 import { getCurrentSong, CurrentSong } from '@/services/radioService';
+import { searchSpotifyTrack, SpotifyTrack } from '@/services/spotifyService';
 
 const { width } = Dimensions.get('window');
 const TURNTABLE_SIZE = width * 0.7;
-const PLS_URL = 'https://radio.trucksim.fm:8000/listen.pls?sid=1';
+const STREAM_URL = 'https://radio.trucksim.fm:8000/radio.mp3';
 const LOGO_URL = 'https://trucksim.fm/uploads/TSFM_25_IMG_57adbe1a8b.png';
 
 export default function RadioScreen() {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [currentSong, setCurrentSong] = useState<CurrentSong>({
     title: 'TruckSimFM',
     artist: 'Loading...',
   });
+  const [spotifyData, setSpotifyData] = useState<SpotifyTrack | null>(null);
   const [error, setError] = useState<string | null>(null);
   const songUpdateInterval = useRef<NodeJS.Timeout | null>(null);
+  const lastSearchedSong = useRef<string>('');
 
-  // Parse .pls file on mount
+  // Animation value for turntable rotation
+  const rotation = useSharedValue(0);
+
+  // Animated style for turntable
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ rotate: `${rotation.value}deg` }],
+    };
+  });
+
+  // Start/stop rotation based on playback state
   useEffect(() => {
-    parseStreamUrl();
+    if (isPlaying) {
+      // Start continuous rotation
+      rotation.value = withRepeat(
+        withTiming(360, {
+          duration: 3000,
+          easing: Easing.linear,
+        }),
+        -1, // infinite repeat
+        false
+      );
+    } else {
+      // Stop rotation smoothly
+      cancelAnimation(rotation);
+      rotation.value = withTiming(Math.floor(rotation.value / 360) * 360, {
+        duration: 500,
+        easing: Easing.out(Easing.ease),
+      });
+    }
+  }, [isPlaying]);
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
       if (sound) {
         sound.unloadAsync();
@@ -49,10 +89,10 @@ export default function RadioScreen() {
     if (isPlaying) {
       // Update immediately
       updateCurrentSong();
-      // Then update every 10 seconds
+      // Then update every 15 seconds
       songUpdateInterval.current = setInterval(() => {
         updateCurrentSong();
-      }, 10000);
+      }, 15000);
     } else {
       if (songUpdateInterval.current) {
         clearInterval(songUpdateInterval.current);
@@ -67,34 +107,25 @@ export default function RadioScreen() {
     };
   }, [isPlaying]);
 
-  const parseStreamUrl = async () => {
-    try {
-      console.log('Parsing .pls file from:', PLS_URL);
-      const urls = await parsePlsPlaylist(PLS_URL);
-      if (urls.length > 0) {
-        console.log('Stream URL found:', urls[0]);
-        setStreamUrl(urls[0]);
-        setError(null);
-      } else {
-        setError('No stream URL found in playlist');
-      }
-    } catch (err) {
-      console.error('Error parsing stream URL:', err);
-      setError('Failed to load stream URL');
-    }
-  };
-
   const updateCurrentSong = async () => {
     const song = await getCurrentSong();
     setCurrentSong(song);
+
+    // If we have artist and title, search Spotify
+    if (song.artist && song.title) {
+      const songKey = `${song.artist}-${song.title}`;
+      // Only search if it's a different song
+      if (songKey !== lastSearchedSong.current) {
+        lastSearchedSong.current = songKey;
+        const spotifyResult = await searchSpotifyTrack(song.artist, song.title);
+        if (spotifyResult && spotifyResult.album_art_url) {
+          setSpotifyData(spotifyResult);
+        }
+      }
+    }
   };
 
   const togglePlayback = async () => {
-    if (!streamUrl) {
-      setError('Stream URL not available');
-      return;
-    }
-
     try {
       if (isPlaying && sound) {
         // Stop
@@ -108,7 +139,7 @@ export default function RadioScreen() {
         setError(null);
 
         const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: streamUrl },
+          { uri: STREAM_URL },
           { shouldPlay: true, volume: 1.0 },
           onPlaybackStatusUpdate
         );
@@ -133,6 +164,9 @@ export default function RadioScreen() {
     }
   };
 
+  // Determine which image to show on turntable
+  const albumArtUrl = spotifyData?.album_art_url || LOGO_URL;
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -148,27 +182,34 @@ export default function RadioScreen() {
         </View>
       </View>
 
-      {/* Turntable */}
+      {/* Turntable with Rotation Animation */}
       <View style={styles.turntableContainer}>
-        <View style={[styles.turntable, isPlaying && styles.turntablePlaying]}>
+        <Animated.View
+          style={[styles.turntable, animatedStyle]}
+        >
           <Image
-            source={{ uri: LOGO_URL }}
+            source={{ uri: albumArtUrl }}
             style={styles.albumArt}
             resizeMode="cover"
           />
           {/* Vinyl effect */}
           <View style={styles.vinylCenter} />
-        </View>
+        </Animated.View>
       </View>
 
       {/* Song Info */}
       <View style={styles.songInfo}>
         <Text style={styles.songTitle} numberOfLines={1}>
-          {currentSong.title || 'TruckSimFM'}
+          {spotifyData?.title || currentSong.title || 'TruckSimFM'}
         </Text>
         <Text style={styles.songArtist} numberOfLines={1}>
-          {currentSong.artist || 'Live Radio'}
+          {spotifyData?.artist || currentSong.artist || 'Live Radio'}
         </Text>
+        {spotifyData?.album && (
+          <Text style={styles.songAlbum} numberOfLines={1}>
+            {spotifyData.album}
+          </Text>
+        )}
       </View>
 
       {/* Error Message */}
@@ -183,7 +224,7 @@ export default function RadioScreen() {
       <TouchableOpacity
         style={styles.playButton}
         onPress={togglePlayback}
-        disabled={isLoading || !streamUrl}
+        disabled={isLoading}
       >
         {isLoading ? (
           <ActivityIndicator size="large" color={Colors.text} />
@@ -202,9 +243,7 @@ export default function RadioScreen() {
           ? 'Connecting...'
           : isPlaying
           ? 'Now Playing'
-          : streamUrl
-          ? 'Tap to Play'
-          : 'Loading stream...'}
+          : 'Tap to Play'}
       </Text>
     </View>
   );
@@ -266,9 +305,6 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
   },
-  turntablePlaying: {
-    // Animation will be added in Phase 2
-  },
   albumArt: {
     width: TURNTABLE_SIZE * 0.7,
     height: TURNTABLE_SIZE * 0.7,
@@ -298,6 +334,12 @@ const styles = StyleSheet.create({
   songArtist: {
     fontSize: 18,
     color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  songAlbum: {
+    fontSize: 14,
+    color: Colors.textMuted,
     textAlign: 'center',
   },
   errorContainer: {
