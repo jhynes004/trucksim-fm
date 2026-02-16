@@ -97,8 +97,8 @@ export default function RequestScreen() {
           return;
         }
         isValid = true;
-        whatsappMessage = `🏆 Competition Entry\n\n`;
-        whatsappMessage += `WIN ${message}`;
+        // Only send "WIN [answer]" - no header
+        whatsappMessage = `WIN ${message}`;
         break;
     }
 
