@@ -10,7 +10,6 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 import uuid
 from datetime import datetime
-from bs4 import BeautifulSoup
 
 
 ROOT_DIR = Path(__file__).parent
