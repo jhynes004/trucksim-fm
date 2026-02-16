@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { Audio } from 'expo-av';
 import { StatusBar } from 'expo-status-bar';
-import { Colors } from '@/constants/colors';
+import { Colors } from '../constants/colors';
 
 export default function RootLayout() {
   useEffect(() => {
