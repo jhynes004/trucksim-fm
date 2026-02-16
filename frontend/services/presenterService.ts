@@ -43,30 +43,42 @@ const isShowLive = (show: ScheduleItem, now: Date): boolean => {
   const endTime = new Date(show.end_time);
   
   if (show.permanent) {
-    // For permanent shows, we need to match by day of week and time
+    // For permanent/recurring shows, match by day of week and time only
+    // getUTCDay(): 0 = Sunday, 1 = Monday, ..., 6 = Saturday
     const nowDay = now.getUTCDay();
     const showDay = startTime.getUTCDay();
-    
-    const startHours = startTime.getUTCHours();
-    const startMinutes = startTime.getUTCMinutes();
-    const endHours = endTime.getUTCHours();
-    const endMinutes = endTime.getUTCMinutes();
     
     const nowHours = now.getUTCHours();
     const nowMinutes = now.getUTCMinutes();
     const nowTotalMinutes = nowHours * 60 + nowMinutes;
+    
+    const startHours = startTime.getUTCHours();
+    const startMinutes = startTime.getUTCMinutes();
     const startTotalMinutes = startHours * 60 + startMinutes;
+    
+    const endHours = endTime.getUTCHours();
+    const endMinutes = endTime.getUTCMinutes();
     const endTotalMinutes = endHours * 60 + endMinutes;
     
-    // Check if same day and within time range
-    if (nowDay === showDay) {
-      return nowTotalMinutes >= startTotalMinutes && nowTotalMinutes < endTotalMinutes;
-    }
+    const isSameDay = nowDay === showDay;
+    const isWithinTime = nowTotalMinutes >= startTotalMinutes && nowTotalMinutes < endTotalMinutes;
     
-    return false;
+    // Debug logging
+    console.log(`[isShowLive] ${show.show_name}: nowDay=${nowDay}, showDay=${showDay}, ` +
+      `nowTime=${nowHours}:${nowMinutes} (${nowTotalMinutes}min), ` +
+      `showTime=${startHours}:${startMinutes}-${endHours}:${endMinutes} (${startTotalMinutes}-${endTotalMinutes}min), ` +
+      `sameDay=${isSameDay}, withinTime=${isWithinTime}`);
+    
+    return isSameDay && isWithinTime;
   } else {
-    // For one-time shows, just check if current time is within range
-    return now >= startTime && now < endTime;
+    // For one-time shows, check if current timestamp is within the exact range
+    const isLive = now >= startTime && now < endTime;
+    
+    console.log(`[isShowLive] ${show.show_name} (one-time): ` +
+      `now=${now.toISOString()}, start=${startTime.toISOString()}, end=${endTime.toISOString()}, ` +
+      `isLive=${isLive}`);
+    
+    return isLive;
   }
 };
 
@@ -89,10 +101,23 @@ export const getLivePresenter = async (): Promise<LivePresenter> => {
     const scheduleData = response.data.data as ScheduleItem[];
     const now = new Date();
     
-    console.log('[PresenterService] Checking', scheduleData.length, 'shows for live presenter');
+    console.log(`[PresenterService] Current UTC: ${now.toISOString()}, Day: ${now.getUTCDay()}, Hour: ${now.getUTCHours()}`);
+    console.log(`[PresenterService] Checking ${scheduleData.length} shows for live presenter`);
     
-    // Find the currently live show
-    const liveShow = scheduleData.find(show => isShowLive(show, now));
+    // Find the currently live show - check permanent shows first as they're recurring
+    // Sort to prioritize permanent shows that match the current time slot
+    const sortedShows = [...scheduleData].sort((a, b) => {
+      // Prioritize permanent shows
+      if (a.permanent && !b.permanent) return -1;
+      if (!a.permanent && b.permanent) return 1;
+      return 0;
+    });
+    
+    const liveShow = sortedShows.find(show => {
+      // Skip shows without a presenter
+      if (!show.users_permissions_user) return false;
+      return isShowLive(show, now);
+    });
     
     if (liveShow && liveShow.users_permissions_user) {
       const presenter = liveShow.users_permissions_user;
@@ -100,7 +125,7 @@ export const getLivePresenter = async (): Promise<LivePresenter> => {
         ? `https://trucksim.fm${presenter.profile_photo.url}`
         : null;
       
-      console.log('[PresenterService] Found live presenter:', presenter.username);
+      console.log('[PresenterService] Found live presenter:', presenter.username, 'Show:', liveShow.show_name);
       
       return {
         name: presenter.username,
