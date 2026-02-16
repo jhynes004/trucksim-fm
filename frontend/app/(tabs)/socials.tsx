@@ -1,10 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, ScrollView, Alert, Image } from 'react-native';
 import { Colors } from '@/constants/colors';
 
 interface SocialLink {
   name: string;
-  icon: string;
+  logo: any;
   url: string;
   color: string;
   description: string;
@@ -13,28 +13,28 @@ interface SocialLink {
 const SOCIAL_LINKS: SocialLink[] = [
   {
     name: 'WhatsApp',
-    icon: '💬',
+    logo: require('@/assets/social-logos/whatsapp.png'),
     url: 'https://wa.me/447700183123',
     color: '#25D366',
     description: 'Message us directly on WhatsApp',
   },
   {
     name: 'Discord',
-    icon: '💭',
+    logo: require('@/assets/social-logos/discord.png'),
     url: 'http://discord.trucksim.fm/',
     color: '#5865F2',
     description: 'Join our Discord community',
   },
   {
     name: 'Facebook',
-    icon: '📘',
+    logo: require('@/assets/social-logos/facebook.png'),
     url: 'https://facebook.com/TruckSimFM',
     color: '#1877F2',
     description: 'Follow us on Facebook',
   },
   {
     name: 'X (Twitter)',
-    icon: '✖️',
+    logo: require('@/assets/social-logos/x-twitter.png'),
     url: 'https://x.com/trucksimfm',
     color: '#000000',
     description: 'Follow us on X (Twitter)',
