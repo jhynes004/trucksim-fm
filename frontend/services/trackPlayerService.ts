@@ -2,7 +2,6 @@ import TrackPlayer, {
   AppKilledPlaybackBehavior,
   Capability,
   RepeatMode,
-  Event,
 } from 'react-native-track-player';
 
 const STREAM_URL = 'https://radio.trucksim.fm:8000/radio.mp3';
