@@ -10,7 +10,7 @@ import sys
 from urllib.parse import urlparse
 
 # Backend URL from frontend .env
-BACKEND_URL = "https://trucksim-radio.preview.emergentagent.com/api"
+BACKEND_URL = "https://trucksim-radio-1.preview.emergentagent.com/api"
 RADIO_STREAM_URL = "https://radio.trucksim.fm:8000/radio.mp3"
 CURRENT_SONG_URL = "https://radio.trucksim.fm:8000/currentsong?sid=1"
 

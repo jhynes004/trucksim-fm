@@ -3,87 +3,115 @@
 The user wants a mobile application for the online radio station .
 
 **PRODUCT REQUIREMENTS**:
-- **Streaming**: Listen to the live stream from . The direct URL was later provided as .
+- **Streaming**: Listen to the live stream from .
 - **Now Playing**: Fetch the current song from .
 - **Spotify Integration**: Use the Spotify API to get album art and full metadata for the currently playing song.
-- **Turntable UI**: Display the album art on a spinning turntable animation while the stream is playing.
-- **Song Requests**: A native UI to handle song requests, which should integrate with the station's request system (). This was later implemented by opening WhatsApp.
+- **Turntable UI**: Display the album art on a spinning turntable animation.
+- **Song Requests**: A native UI to handle song requests. This was enhanced to include a dropdown menu for different request types:
+    - **Song Request**: Collects Artist, Song, Name, and Message.
+    - **Shout-out**: Collects Name and Message.
+    - **Competition Entry**: Collects only a message (the user's answer), which is then prefixed with WIN  before being sent. All requests open WhatsApp.
 - **Schedule**: A native UI to display the show schedule from .
-- **Listener Stats**: A tab that embeds .
+- **Listener Stats**: A tab that embeds  in a WebView.
 - **Socials Tab**: A tab with links and logos for WhatsApp, Discord, Facebook, and X (Twitter).
-- **Branding**: The app's color scheme and logo should match the  website.
-- **Navigation**: The user preferred a tab-based navigation structure.
+- **Branding**: The app's color scheme, logo, icon, and splash screen should match the  branding.
+- **Navigation**: The app uses a tab-based navigation structure.
+- **Deployment**: Prepare the application for deployment to app stores.
 
 </original_problem_statement>
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack application with an Expo (React Native) frontend and a FastAPI backend.
-- The frontend has a tab-based navigation structure with five tabs: Radio, Request, Schedule, Stats, and Socials.
-- The Radio tab successfully streams audio, fetches the current song, gets album art from Spotify, and displays it on a rotating turntable.
-- The Request tab opens WhatsApp with a pre-filled message for users to send a song request.
-- The Schedule tab fetches data from the TruckSimFM API but the UI is currently broken.
-- The Stats and Socials tabs are placeholders.
-- The backend has proxy endpoints to fetch data from TruckSimFM (current song, schedule) and an endpoint to query the Spotify API, bypassing client-side CORS issues.
+The application is functionally complete. It is a full-stack application with an Expo (React Native) frontend and a FastAPI backend.
+- All five tabs (Radio, Request, Schedule, Stats, Socials) are fully implemented and functional.
+- The Radio tab streams audio and displays Now Playing information with album art fetched via an enhanced, resilient Spotify search service on the backend.
+- The Schedule tab correctly fetches and displays both recurring and one-time shows for the selected day, matching the official website.
+- The Request tab features a dropdown menu for Song Request, Shout-out, and Competition Entry, each with custom fields and correctly formatted WhatsApp messages.
+- The Stats and Socials tabs are complete, with the Socials tab displaying the official brand logos.
+- The application is fully branded with the user-provided app icon and splash screen.
+- The project has been prepared for deployment with  and  configurations. Several deployment-related build errors have been fixed.
 
 **Last working item**:
--   **Last item agent was working on**: The agent was fixing the Schedule tab. The user initially reported that it was showing all historical shows for a given day of the week, not just the current day's schedule. The agent implemented a fix for this filtering logic. However, after the fix, the user reported that the schedule's UI layout is now a bit broken and referred to a screenshot. The agent was about to diagnose and fix this new layout issue.
+-   **Last item agent was working on**: The agent was assisting the user with the final step of the development lifecycle: building the application for their own device. The user was unable to run the app via Expo Go after deployment and requested help building a production APK. Since the agent cannot build an APK directly in the environment, it invoked the  to provide the user with instructions on how to download the code and build it on their local computer. The last interaction was confirming that these instructions would work on a Windows PC (with WSL).
 -   **Status**: IN PROGRESS
--   **Agent Testing Done**: N
--   **Which testing method agent to use?**: The agent should first use the  to visually inspect and confirm the UI layout of the schedule tab is fixed. Afterwards, it can ask the user for verification.
--   **User Testing Done**: Y
+-   **Agent Testing Done**: N/A (This is a user support task)
+-   **Which testing method agent to use?**: N/A. The next agent should continue in a guidance/support role, helping the user troubleshoot their local build environment if they encounter issues.
+-   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1**: The UI layout for the Schedule tab is broken. (Priority: P0)
+-   **Issue 1**: User is unable to build and run the app on their local device. (Priority: P0)
 
 **Issues Detail**:
--   **Issue 1**: The Schedule tab's UI layout is broken.
-    -   **Attempted fixes**: The agent modified  to filter shows based on the current date. While this might have fixed the data filtering, it seems to have broken the visual layout, as reported by the user.
+-   **Issue 1**:
+    -   **Attempted fixes**: The agent fixed multiple deployment build errors (path aliases, environment variables). When the user still couldn't access the app in Expo Go, the agent pivoted to providing instructions for a local build. The agent provided guidance on downloading the code and using EAS CLI on a local machine.
     -   **Next debug checklist**:
-        1.  Examine the file .
-        2.  Review the React Native components and  being used.
-        3.  Check for flexbox issues, incorrect styling, or problems with how the filtered list of shows is being rendered.
-        4.  Use the  to get a visual of the current broken state and iterate on fixes until the layout is corrected.
-    -   **Why fix this issue and what will be achieved with the fix?**: The Schedule tab is a core feature. Fixing it will provide users with a functional and readable view of the current day's shows, completing Phase 4 of the project.
+        1.  Ask the user if they have successfully downloaded the code and set up their local environment (Node.js, Yarn, EAS CLI, WSL for Windows).
+        2.  If they encounter errors during yarn install v1.22.22
+[1/4] Resolving packages...
+success Already up-to-date.
+Done in 0.47s., Log in to EAS with email or username (exit and run eas login --help to see other login options)
+Input is required, but stdin is not readable. Failed to display prompt: Email or username, or An Expo user account is required to proceed.
+
+Log in to EAS with email or username (exit and run eas login --help to see other login options)
+Input is required, but stdin is not readable. Failed to display prompt: Email or username, ask for the specific error logs.
+        3.  Guide them through debugging common local setup issues (e.g., correct Node version, environment variables, login credentials).
+        4.  The goal is to successfully guide the user to trigger an An Expo user account is required to proceed.
+
+Log in to EAS with email or username (exit and run eas login --help to see other login options)
+Input is required, but stdin is not readable. Failed to display prompt: Email or username command on their own machine.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is the final step. Fixing this will allow the user to receive a usable APK/IPA file, completing the project.
     -   **Status**: IN PROGRESS
     -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: frontend
-    -   **Blocked on other issue**: None
+    -   **Should Test frontend/backend/both after fix?**: N/A
+    -   **Blocked on other issue**: Blocked on user action (user needs to perform steps on their local machine).
 
 **In progress Task List**:
--   **Task 1**: Complete Phase 4: Show Schedule. (Priority: P0)
+-   **Task 1**: Finalize app deployment/build. (Priority: P0)
 
 **Task Detail**:
 -   **Task 1**:
-    -   **Where to resume**: The agent needs to start by debugging the UI layout of .
-    -   **What will be achieved with this?**: A fully functional, correctly filtered, and visually appealing schedule screen.
+    -   **Where to resume**: Continue the conversation with the user, guiding them through the local build process as outlined in the issue above.
+    -   **What will be achieved with this?**: The user will have a distributable build (APK/IPA) of their application.
     -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: frontend
-    -   **Blocked on something**: The UI is broken.
+    -   **Should Test frontend/backend/both after fix?**: N/A
+    -   **Blocked on something**: User's local environment setup and actions.
 
 **Upcoming and Future Tasks**
--   **Upcoming Tasks**:
-    -   **Phase 5 (P0)**: Implement the Listener Stats tab by creating a native view that embeds  using a .
-    -   **Phase 6 (P1)**: Implement the Socials tab. This involves creating a list with links to WhatsApp, Discord, Facebook, and X, complete with their respective logos and color schemes.
-
--   **Future Tasks**:
-    -   None explicitly mentioned beyond the initial PRD.
+- None. All requested features have been implemented.
 
 **Completed work in this session**
--   **Project Setup**: Initialized an Expo project with a FastAPI backend and set up a 5-tab navigation structure using .
--   **Phase 1: Core Radio Player**: Implemented audio streaming with  and live song title fetching via a backend proxy.
--   **Phase 2: Spotify Integration**: Successfully integrated the Spotify API on the backend to fetch album art and metadata. Implemented the rotating turntable animation on the frontend. Debugged and resolved CORS and environment variable loading issues. User verified this is working.
--   **Phase 3: Song Request Form**: Implemented a Request tab that opens WhatsApp for submitting requests. User verified this is working.
+- **Schedule Tab Fix**:
+  - Corrected the data filtering logic in  to display both permanent (recurring) and one-time shows for the selected day.
+  - Implemented correct time-based sorting for the schedule list.
+  - Fixed UI layout issues by replacing the unsupported  style property with margins.
+- **Spotify Search Enhancement**:
+  - Re-architected the Spotify search in  with a 5-step fallback strategy to handle variations in song titles and artist names.
+  - Added a validation function to prevent false positive matches by checking word overlap.
+  - Added robust logging to track which search strategy was successful.
+- **Request Tab Enhancement**:
+  - Implemented a dropdown menu in  for Song Request, Shout-out, and Competition Entry.
+  - Created conditional form fields that change based on the selected request type.
+  - Fixed the Competition Entry WhatsApp message format to be  as per user's request.
+- **Stats & Socials Tabs Implementation**:
+  - Implemented the Stats tab using a  in .
+  - Implemented the Socials tab with clickable links and brand colors in .
+  - Updated the Socials tab to use official brand logos (PNG images) instead of emojis, including fixing a visibility issue with the Discord logo.
+- **Deployment Preparation & Bug Fixes**:
+  - Configured  and created  for production builds.
+  - Added the user-provided app icon and splash screen assets.
+  - Resolved a critical deployment build error by converting all path aliases () to relative paths in all relevant frontend files.
+  - Corrected backend environment variables in  to fix deployment issues.
+  - Added a root  route to  to handle health checks from the deployment environment.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1**: Initial TruckSimFM logo and turntable placeholder images were not loading correctly when the app was first built (noted in message 66). While the Spotify album art now loads, the status of the placeholder and branding logo is unclear and was never explicitly fixed.
-    -   **Debug checklist**: Check the  component source in . Verify the image URI is correct and accessible. Investigate potential CORS or asset bundling issues.
-    -   **Why to solve this issue and what will be achieved with this?**: Ensures the app has a polished look and correct branding from the moment it loads, even before music is playing.
+-   **Issue 1**: Initial TruckSimFM logo and turntable placeholder images were reported as not loading, but this was never explicitly fixed. The focus shifted to loading the Spotify album art.
+    -   **Debug checklist**: Check  to see if a placeholder image is used before the Spotify art loads. Ensure its URI is correct and the asset is bundled.
+    -   **Why to solve this issue and what will be achieved with this?**: Provides a better initial loading experience and consistent branding.
     -   **Should Test frontend/backend/both after fix**: frontend
     -   **Is recurring issue?**: N
--   **Issue 2**: A network error for loading the  font was observed in the browser console (noted in message 163). While the agent was able to fix the tab icons, this underlying font loading issue might cause other icons to fail or appear as 'X' in the future.
-    -   **Debug checklist**: Verify that  is correctly installed and configured. Check the  loading mechanism in  to ensure fonts are loaded before the app renders.
-    -   **Why to solve this issue and what will be achieved with this?**: Prevents broken icons throughout the app, ensuring a consistent and professional user interface.
+-   **Issue 2**: An  font loading network error was observed in early logs. While the tab icons were fixed, the root cause of the font file error was never investigated.
+    -   **Debug checklist**: Verify  configuration and ensure fonts are pre-loaded correctly in .
+    -   **Why to solve this issue and what will be achieved with this?**: Prevents potential issues with other icons in the app not rendering correctly.
     -   **Should Test frontend/backend/both after fix**: frontend
     -   **Is recurring issue?**: N
 
@@ -94,78 +122,87 @@ A full-stack application with an Expo (React Native) frontend and a FastAPI back
 
 
 **Key Technical Concepts**
--   **Frontend**: Expo, React Native, TypeScript,  (file-based routing),  (audio playback),  (animations).
--   **Backend**: FastAPI (Python), , , .
--   **Architecture**: A mobile app with a backend-for-frontend (BFF) pattern. The backend acts as a proxy to circumvent CORS issues when fetching data from third-party APIs (TruckSimFM, Spotify).
--   **State Management**: Component-level state using  and  hooks.
+-   **Frontend**: Expo, React Native, TypeScript, , , .
+-   **Backend**: FastAPI (Python), , .
+-   **Architecture**: Backend-for-Frontend (BFF) proxy pattern. The Expo app is a standalone client, and the backend is deployed separately.
+-   **Deployment**: Expo Application Services (EAS) for mobile builds. Emergent deployment for the backend.
 
 **key DB schema**
--   No database is currently in use. All data is ephemeral or fetched from external APIs.
+-   No database is used.
 
 **changes in tech stack**
 -   None.
 
 **All files of reference**
--   : Created to house all backend logic, including proxy endpoints for TruckSimFM and the Spotify search endpoint.
--   : Created to store  and .
--   : Created to define the main tab-based navigation structure.
--   : Created for the main radio player feature.
--   : Created for the song request feature.
--   : Created for the show schedule feature; it is the file with the current bug.
--   : Created to handle the root route and redirect to .
--   : Modified to add .
+-   : Modified to add root  and  routes.
+-   : Created and heavily modified to implement a resilient multi-strategy Spotify search.
+-   : Modified to remove quotes and add .
+-   : Modified to fix data filtering, sorting, and UI styles.
+-   : Modified to add a dropdown, conditional fields, and custom WhatsApp message formatting.
+-   : Created to implement the WebView for stats.
+-   : Created and modified to display social links with official logos.
+-   : Heavily modified for production branding (icon, splash screen) and EAS update configuration.
+-   : Created to configure EAS Build.
+-   : All app branding and social logo images were created.
+-   : Created as a guide for the user.
+-   All frontend files under  were modified to replace path aliases () with relative paths.
 
 **Areas that need refactoring**:
--   The agent noted that  is deprecated. While functional, it could be a candidate for replacement with a more modern audio library like  in the future to ensure long-term maintenance and access to new features.
+-   None identified in this session.
 
 **key api endpoints**
--   : Proxies a request to  to fetch the current song title.
--   : Proxies a request to the TruckSimFM Strapi API to fetch the show schedule.
--   : Takes  and  as query parameters, searches Spotify, and returns track metadata including album art.
+-   : Health check endpoint.
+-   : Proxies request to fetch the current song.
+-   : Proxies request to fetch the show schedule.
+-   : Searches Spotify for track metadata using an enhanced multi-strategy algorithm.
 
 **Critical Info for New Agent**
--   **CORS Proxies**: The application relies on backend proxy endpoints (, ) to fetch data from TruckSimFM. Do not attempt to call the TruckSimFM APIs directly from the frontend, as it will fail due to CORS.
--   **Environment Variable Loading**: A critical bug was discovered where a singleton service instance in the backend was being created *before*  was called. The fix was to ensure  runs before any modules that depend on environment variables are imported and instantiated. Be mindful of this import order in .
--   **Spotify Credentials**: The Spotify Client ID and Secret are stored in  and are required for the metadata feature to work.
+-   **Project is complete**: The primary goal is no longer development but user support. The user needs to build the app on their own computer. Your role is to guide them through this process.
+-   **No Direct APK Builds**: You cannot use An Expo user account is required to proceed.
+
+Log in to EAS with email or username (exit and run eas login --help to see other login options)
+Input is required, but stdin is not readable. Failed to display prompt: Email or username in this environment. Do not attempt it. You must guide the user to run it on their local machine.
+-   **Path Aliases Removed**: A critical fix was replacing all  path aliases (e.g., ) with relative paths () to resolve an EAS build error. Do not re-introduce path aliases without a corresponding  plugin configuration.
+-   **Deployment URLs**: The user has been provided with a backend URL (). This URL has been set in  as . The frontend preview URL is for development and testing only.
 
 **documents created in this job**
--    was created and updated throughout the session.
+-   
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
-10.  - **COMPLETED**
-9.   - User confirms Phase 3 (Request form via WhatsApp) is acceptable. - **COMPLETED**
-8.   - User asks to start Phase 4 (Schedule). - **COMPLETED**
-7.   - User interruption during agent's thinking process. - **COMPLETED**
-6.   - User reports bug in schedule filtering. - **IN_PROGRESS**
-5.   - User reports a new bug with the schedule UI layout after the agent's filtering fix. - **PENDING (CURRENT HIGHEST PRIORITY)**
-4.   - User reported metadata wasn't working. This was fixed by creating a backend proxy. - **RESOLVED**
-3.   - User provided feedback from the UI which helped debug the CORS issue. - **RESOLVED**
-2.   - User confirms the metadata and radio player are now fully functional after the proxy fix. - **COMPLETED**
-1.  **Last message**:  - This is the current active issue the next agent needs to address.
+10.  (Logs provided) - **RESOLVED**
+9.  - **RESOLVED**
+8.  - **COMPLETED**
+7.  (Update app.json) - **COMPLETED**
+6.  - **COMPLETED**
+5.  - **COMPLETED**
+4.  - **COMPLETED**
+3.  - **RESOLVED (Instructions provided)**
+2.  - **RESOLVED (Clarified it's for computers)**
+1. **Last Message**:  - The user is asking for confirmation about the local build instructions. This is the pending message to be addressed.
 
 **Project Health Check:**
--   **Working**: Radio streaming, metadata fetching, turntable animation, song requests.
--   **Broken**: The UI layout of the Schedule tab.
+-   **Working**: All application features (Radio, Schedule, Request, Stats, Socials), Backend services, App branding.
+-   **Broken**: The user's ability to get the app onto their own device. The guided local build process is the fix in progress.
 -   **Mocked**: None.
 
 **3rd Party Integrations**
--   **Spotify Web API**: Used for fetching song metadata and album art. Requires User API Key (Client ID and Secret), which have been provided and are stored in .
+-   **Spotify Web API**: Used for fetching song metadata. Requires User API Key, stored in .
+-   **TruckSim.fm Radio/API**: Used for audio stream and schedule data. No key required.
+-   **Expo Application Services (EAS)**: Used for building the mobile application. Requires user to log in with their own Expo account on their local machine.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES ( was used).
--   **Troubleshoot agent used after agent stuck in loop**: YES (used for an expo-router issue).
+-   **Testing agent used after significant changes**: YES (Deployment Agent / Health Check).
+-   **Troubleshoot agent used after agent stuck in loop**: NO.
 -   **Test files created**: None.
--   **Known regressions**: The schedule UI broke after a fix was applied to its data filtering logic.
+-   **Known regressions**: None in the code. The only regression is the user's inability to test in Expo Go, which prompted the pivot to local builds.
 
 **Credentials to test flow:**
--   Spotify API credentials are located in .
+-   Spotify API credentials are in .
 
 **What agent forgot to execute**
--   The agent identified an issue with the initial loading of the TruckSimFM logo and a placeholder turntable image (Message 66) but never returned to fix it.
--   The agent identified a  font loading error (Message 163) but did not resolve the root cause, even though the immediate icon issue was fixed.
+-   The agent never circled back to fix the two minor issues identified in the very first handoff summary:
+    1.  The potential missing placeholder/branding image on the turntable before Spotify art loads.
+    2.  The root cause of an early  font loading error.
 
 </analysis>
-<SYS_PROMPT_SEPARATOR>
-<workspace_dir>
-/app
-</workspace_dir>
