@@ -128,6 +128,26 @@ export default function RadioScreen() {
   const recentlyPlayedInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSearchedSong = useRef<string>('');
 
+  // Configure audio for background playback
+  useEffect(() => {
+    const setupAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: true,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+        console.log('[RadioScreen] Audio mode configured for background playback');
+      } catch (err) {
+        console.error('[RadioScreen] Error setting audio mode:', err);
+      }
+    };
+    
+    setupAudio();
+  }, []);
+
   // Animation value for turntable rotation
   const rotation = useSharedValue(0);
 
