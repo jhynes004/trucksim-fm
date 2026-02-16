@@ -91,7 +91,7 @@ export default function ScheduleScreen() {
   const filterScheduleByDay = (dayIndex: number) => {
     // Get the target date for the selected day
     const today = new Date();
-    const currentDay = today.getDay();
+    const currentDay = today.getUTCDay(); // Use UTC to match schedule data
     
     // Calculate how many days to add to get to the selected day this week
     let daysToAdd = dayIndex - currentDay;
@@ -100,42 +100,69 @@ export default function ScheduleScreen() {
     }
     
     const targetDate = new Date(today);
-    targetDate.setDate(today.getDate() + daysToAdd);
-    targetDate.setHours(0, 0, 0, 0);
+    targetDate.setUTCDate(today.getUTCDate() + daysToAdd);
+    targetDate.setUTCHours(0, 0, 0, 0);
 
     console.log('Filtering for date:', targetDate.toISOString(), 'dayIndex:', dayIndex);
 
+    // Track unique shows by time slot + presenter to deduplicate
+    const uniqueShowsMap = new Map<string, ScheduleShow>();
+
     // Filter shows
-    const filtered = schedule.filter((show) => {
+    schedule.forEach((show) => {
       const showDate = new Date(show.start_time);
-      const showDateOnly = new Date(showDate);
-      showDateOnly.setHours(0, 0, 0, 0);
+      const showDay = showDate.getUTCDay(); // Use UTC
       
       // For permanent shows, check if they occur on this day of week
-      // and are not in excluded dates
       if (show.permanent) {
-        const isCorrectDayOfWeek = showDate.getDay() === dayIndex;
+        const isCorrectDayOfWeek = showDay === dayIndex;
         
         // Check if this specific date is excluded
         let isExcluded = false;
         if (show.excluded_dates && Array.isArray(show.excluded_dates)) {
           isExcluded = show.excluded_dates.some((excludedDate: string) => {
             const excluded = new Date(excludedDate);
-            excluded.setHours(0, 0, 0, 0);
-            return excluded.getTime() === targetDate.getTime();
+            return excluded.getUTCFullYear() === targetDate.getUTCFullYear() &&
+                   excluded.getUTCMonth() === targetDate.getUTCMonth() &&
+                   excluded.getUTCDate() === targetDate.getUTCDate();
           });
         }
         
-        return isCorrectDayOfWeek && !isExcluded;
+        if (isCorrectDayOfWeek && !isExcluded) {
+          // Create unique key: time + presenter
+          const startMins = showDate.getUTCHours() * 60 + showDate.getUTCMinutes();
+          const presenter = show.presenter?.username || 'unknown';
+          const key = `${startMins}-${presenter}-permanent`;
+          
+          // Only add if not already present (prefer first occurrence)
+          if (!uniqueShowsMap.has(key)) {
+            uniqueShowsMap.set(key, show);
+          }
+        }
+      } else {
+        // For non-permanent shows, check exact date match
+        const isSameDate = 
+          showDate.getUTCFullYear() === targetDate.getUTCFullYear() &&
+          showDate.getUTCMonth() === targetDate.getUTCMonth() &&
+          showDate.getUTCDate() === targetDate.getUTCDate();
+        
+        if (isSameDate) {
+          const startMins = showDate.getUTCHours() * 60 + showDate.getUTCMinutes();
+          const presenter = show.presenter?.username || 'unknown';
+          const key = `${startMins}-${presenter}-onetime`;
+          
+          // One-time shows override permanent shows
+          const permanentKey = `${startMins}-${presenter}-permanent`;
+          if (uniqueShowsMap.has(permanentKey)) {
+            uniqueShowsMap.delete(permanentKey);
+          }
+          uniqueShowsMap.set(key, show);
+        }
       }
-      
-      // For non-permanent shows, only show if the date matches exactly
-      const isSameDate = showDateOnly.getTime() === targetDate.getTime();
-      return isSameDate;
     });
 
-    // Sort by start time (by hour/minute, not full timestamp)
-    filtered.sort((a, b) => {
+    // Convert map to array and sort by start time
+    const filtered = Array.from(uniqueShowsMap.values()).sort((a, b) => {
       const timeA = new Date(a.start_time);
       const timeB = new Date(b.start_time);
       const hourMinA = timeA.getUTCHours() * 60 + timeA.getUTCMinutes();
@@ -143,7 +170,7 @@ export default function ScheduleScreen() {
       return hourMinA - hourMinB;
     });
 
-    console.log(`Found ${filtered.length} shows for ${DAYS[dayIndex]}`);
+    console.log(`Found ${filtered.length} unique shows for ${DAYS[dayIndex]}`);
     setFilteredSchedule(filtered);
   };
 
