@@ -83,10 +83,54 @@ export default function ScheduleScreen() {
   };
 
   const filterScheduleByDay = (dayIndex: number) => {
-    // Filter shows that occur on the selected day
+    // Get the target date for the selected day
+    const today = new Date();
+    const currentDay = today.getDay();
+    
+    // Calculate how many days to add to get to the selected day this week
+    let daysToAdd = dayIndex - currentDay;
+    if (daysToAdd < 0) {
+      daysToAdd += 7; // If the day has passed this week, show next week
+    }
+    
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + daysToAdd);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    const targetDateEnd = new Date(targetDate);
+    targetDateEnd.setHours(23, 59, 59, 999);
+
+    console.log('Filtering for date:', targetDate.toISOString());
+
+    // Filter shows
     const filtered = schedule.filter((show) => {
       const showDate = new Date(show.start_time);
-      return showDate.getDay() === dayIndex;
+      const showDateOnly = new Date(showDate);
+      showDateOnly.setHours(0, 0, 0, 0);
+      
+      // Check if show date matches target date
+      const isSameDate = showDateOnly.getTime() === targetDate.getTime();
+      
+      // For permanent shows, check if they occur on this day of week
+      // and are not in excluded dates
+      if (show.permanent) {
+        const isCorrectDayOfWeek = showDate.getDay() === dayIndex;
+        
+        // Check if this specific date is excluded
+        let isExcluded = false;
+        if (show.excluded_dates && Array.isArray(show.excluded_dates)) {
+          isExcluded = show.excluded_dates.some((excludedDate: string) => {
+            const excluded = new Date(excludedDate);
+            excluded.setHours(0, 0, 0, 0);
+            return excluded.getTime() === targetDate.getTime();
+          });
+        }
+        
+        return isCorrectDayOfWeek && !isExcluded;
+      }
+      
+      // For non-permanent shows, only show if the date matches exactly
+      return isSameDate;
     });
 
     // Sort by start time
@@ -96,6 +140,7 @@ export default function ScheduleScreen() {
       return timeA - timeB;
     });
 
+    console.log(`Found ${filtered.length} shows for ${DAYS[dayIndex]}`);
     setFilteredSchedule(filtered);
   };
 
