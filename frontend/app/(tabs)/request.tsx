@@ -125,11 +125,13 @@ export default function RequestScreen() {
       });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     sendViaWhatsApp();
   };
 
-  const clearForm = () => {
+  const clearForm = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setArtistName('');
     setSongTitle('');
     setYourName('');
