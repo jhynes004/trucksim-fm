@@ -12,6 +12,7 @@ class SpotifyService:
         self.client_secret = os.environ.get('SPOTIFY_CLIENT_SECRET')
         self.access_token = None
         self.token_expires_at = None
+        logger.info(f'Spotify service initialized. Client ID length: {len(self.client_id) if self.client_id else 0}')
         
     def _get_access_token(self) -> str:
         """Get Spotify access token using client credentials flow"""
