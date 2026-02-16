@@ -384,34 +384,6 @@ export default function RadioScreen() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleLikeSong = async (track: RecentlyPlayedTrack) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
-    // Prevent liking the same song twice in one session
-    if (likedSongs.has(track.documentId)) {
-      Alert.alert('Already Liked', 'You already liked this song!');
-      return;
-    }
-    
-    const result = await likeSong(track.documentId);
-    
-    if (result.success) {
-      // Update the liked songs set
-      setLikedSongs(prev => new Set([...prev, track.documentId]));
-      
-      // Update the like count in the local state
-      setRecentlyPlayed(prev => prev.map(t => 
-        t.documentId === track.documentId 
-          ? { ...t, likes: result.likes || t.likes + 1 }
-          : t
-      ));
-      
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } else {
-      Alert.alert('Error', 'Failed to like song. Please try again.');
-    }
-  };
-
   const albumArtUrl = spotifyData?.album_art_url;
   const displayTitle = spotifyData?.title || currentSong.title || 'TruckSimFM';
   const displayArtist = spotifyData?.artist || currentSong.artist || 'Live Radio';
