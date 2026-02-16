@@ -17,14 +17,19 @@ import Animated, {
   Easing,
   cancelAnimation,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
 import { getCurrentSong, CurrentSong } from '../../services/radioService';
 import { searchSpotifyTrack, SpotifyTrack } from '../../services/spotifyService';
+import { getLivePresenter, LivePresenter } from '../../services/presenterService';
 
 const { width } = Dimensions.get('window');
-const TURNTABLE_SIZE = width * 0.7;
+const TURNTABLE_SIZE = width * 0.65;
 const STREAM_URL = 'https://radio.trucksim.fm:8000/radio.mp3';
 const LOGO_URL = 'https://trucksim.fm/uploads/TSFM_25_IMG_57adbe1a8b.png';
+
+// Placeholder vinyl image - TruckSimFM logo
+const PLACEHOLDER_ALBUM = 'https://trucksim.fm/uploads/TSFM_25_IMG_57adbe1a8b.png';
 
 // Simple SVG Icons as components
 const PlayIcon = () => (
@@ -40,6 +45,7 @@ const StopIcon = () => (
 );
 
 export default function RadioScreen() {
+  const insets = useSafeAreaInsets();
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -48,9 +54,12 @@ export default function RadioScreen() {
     artist: 'Tap Play to Start',
   });
   const [spotifyData, setSpotifyData] = useState<SpotifyTrack | null>(null);
+  const [livePresenter, setLivePresenter] = useState<LivePresenter | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fetchStatus, setFetchStatus] = useState<string>('');
-  const songUpdateInterval = useRef<NodeJS.Timeout | null>(null);
+  const [albumArtLoaded, setAlbumArtLoaded] = useState(false);
+  const songUpdateInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const presenterUpdateInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSearchedSong = useRef<string>('');
 
   // Animation value for turntable rotation
@@ -82,6 +91,20 @@ export default function RadioScreen() {
       });
     }
   }, [isPlaying]);
+
+  // Fetch live presenter on mount and periodically
+  useEffect(() => {
+    fetchLivePresenter();
+    presenterUpdateInterval.current = setInterval(() => {
+      fetchLivePresenter();
+    }, 60000); // Update every minute
+
+    return () => {
+      if (presenterUpdateInterval.current) {
+        clearInterval(presenterUpdateInterval.current);
+      }
+    };
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -116,17 +139,24 @@ export default function RadioScreen() {
     };
   }, [isPlaying]);
 
+  const fetchLivePresenter = async () => {
+    try {
+      const presenter = await getLivePresenter();
+      setLivePresenter(presenter);
+    } catch (error) {
+      console.error('Error fetching live presenter:', error);
+    }
+  };
+
   const updateCurrentSong = async () => {
     try {
       setFetchStatus('Fetching song...');
       const song = await getCurrentSong();
       
-      // Show what we got
       const gotMessage = `Got: "${song.artist || 'NO ARTIST'}" - "${song.title || 'NO TITLE'}"`;
       setFetchStatus(gotMessage);
       setCurrentSong(song);
       
-      // Wait 2 seconds so user can see what was fetched
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       if (song.artist && song.title && 
@@ -138,6 +168,7 @@ export default function RadioScreen() {
         if (songKey !== lastSearchedSong.current) {
           lastSearchedSong.current = songKey;
           setFetchStatus('Searching Spotify...');
+          setAlbumArtLoaded(false);
           
           const spotifyResult = await searchSpotifyTrack(song.artist, song.title);
           
@@ -149,14 +180,13 @@ export default function RadioScreen() {
             setSpotifyData(null);
           }
           
-          // Clear status after 3 seconds
           setTimeout(() => setFetchStatus(''), 3000);
         }
       } else {
         setFetchStatus(`Invalid: artist="${song.artist}" title="${song.title}"`);
         setTimeout(() => setFetchStatus(''), 5000);
       }
-    } catch (error) {
+    } catch (error: any) {
       setFetchStatus(`Error: ${error.message || 'Unknown error'}`);
       setTimeout(() => setFetchStatus(''), 5000);
     }
@@ -176,6 +206,7 @@ export default function RadioScreen() {
         setSpotifyData(null);
         lastSearchedSong.current = '';
         setFetchStatus('');
+        setAlbumArtLoaded(false);
       } else {
         setIsLoading(true);
         setError(null);
@@ -197,20 +228,20 @@ export default function RadioScreen() {
     }
   };
 
-  const onPlaybackStatusUpdate = (status) => {
+  const onPlaybackStatusUpdate = (status: any) => {
     if (status.error) {
       setError('Stream playback error');
       setIsPlaying(false);
     }
   };
 
-  const albumArtUrl = spotifyData?.album_art_url || LOGO_URL;
+  const albumArtUrl = spotifyData?.album_art_url || PLACEHOLDER_ALBUM;
   const displayTitle = spotifyData?.title || currentSong.title || 'TruckSimFM';
   const displayArtist = spotifyData?.artist || currentSong.artist || 'Live Radio';
   const displayAlbum = spotifyData?.album;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + 20 }]}>
       {/* Header */}
       <View style={styles.header}>
         <Image
@@ -224,13 +255,51 @@ export default function RadioScreen() {
         </View>
       </View>
 
+      {/* Live Presenter Banner */}
+      {livePresenter && (
+        <View style={styles.presenterBanner}>
+          <View style={styles.presenterInfo}>
+            {livePresenter.photoUrl ? (
+              <Image 
+                source={{ uri: livePresenter.photoUrl }}
+                style={styles.presenterPhoto}
+              />
+            ) : (
+              <View style={styles.presenterPhotoPlaceholder}>
+                <Text style={styles.presenterInitial}>
+                  {livePresenter.name.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+            <View style={styles.presenterTextContainer}>
+              <Text style={styles.presenterName} numberOfLines={1}>
+                {livePresenter.isAutoDJ ? '🤖 ' : '🎙️ '}{livePresenter.name}
+              </Text>
+              <Text style={styles.showName} numberOfLines={1}>
+                {livePresenter.showName}
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Turntable with Rotation Animation */}
       <View style={styles.turntableContainer}>
         <Animated.View style={[styles.turntable, animatedStyle]}>
+          {/* Show placeholder while loading */}
+          {!albumArtLoaded && (
+            <Image
+              source={{ uri: PLACEHOLDER_ALBUM }}
+              style={[styles.albumArt, styles.placeholderImage]}
+              resizeMode="contain"
+            />
+          )}
           <Image
             source={{ uri: albumArtUrl }}
-            style={styles.albumArt}
+            style={[styles.albumArt, !albumArtLoaded && { opacity: 0 }]}
             resizeMode="cover"
+            onLoad={() => setAlbumArtLoaded(true)}
+            onError={() => setAlbumArtLoaded(true)}
           />
           <View style={styles.vinylCenter} />
         </Animated.View>
@@ -270,6 +339,7 @@ export default function RadioScreen() {
         style={styles.playButton}
         onPress={togglePlayback}
         disabled={isLoading}
+        data-testid="play-stop-button"
       >
         {isLoading ? (
           <ActivityIndicator size="large" color={Colors.text} />
@@ -297,16 +367,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
     alignItems: 'center',
-    paddingTop: 60,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 16,
   },
   logo: {
-    width: 200,
-    height: 80,
-    marginBottom: 16,
+    width: 180,
+    height: 60,
+    marginBottom: 12,
   },
   liveIndicator: {
     flexDirection: 'row',
@@ -328,10 +397,61 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 12,
   },
+  presenterBanner: {
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginBottom: 16,
+    marginHorizontal: 20,
+    width: width - 40,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  presenterInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  presenterPhoto: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+  },
+  presenterPhotoPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.card,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  presenterInitial: {
+    color: Colors.primary,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  presenterTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  presenterName: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  showName: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    marginTop: 2,
+  },
   turntableContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 40,
+    marginBottom: 24,
   },
   turntable: {
     width: TURNTABLE_SIZE,
@@ -352,12 +472,16 @@ const styles = StyleSheet.create({
     width: TURNTABLE_SIZE * 0.7,
     height: TURNTABLE_SIZE * 0.7,
     borderRadius: (TURNTABLE_SIZE * 0.7) / 2,
+    position: 'absolute',
+  },
+  placeholderImage: {
+    opacity: 0.5,
   },
   vinylCenter: {
     position: 'absolute',
-    width: TURNTABLE_SIZE * 0.2,
-    height: TURNTABLE_SIZE * 0.2,
-    borderRadius: (TURNTABLE_SIZE * 0.2) / 2,
+    width: TURNTABLE_SIZE * 0.18,
+    height: TURNTABLE_SIZE * 0.18,
+    borderRadius: (TURNTABLE_SIZE * 0.18) / 2,
     backgroundColor: Colors.surface,
     borderWidth: 2,
     borderColor: Colors.primary,
@@ -365,23 +489,23 @@ const styles = StyleSheet.create({
   songInfo: {
     alignItems: 'center',
     paddingHorizontal: 32,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   songTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: Colors.text,
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'center',
   },
   songArtist: {
-    fontSize: 18,
+    fontSize: 16,
     color: Colors.textSecondary,
     textAlign: 'center',
     marginBottom: 4,
   },
   songAlbum: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.textMuted,
     textAlign: 'center',
   },
@@ -390,7 +514,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   statusText: {
     color: Colors.primary,
@@ -404,20 +528,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   errorText: {
     color: Colors.error,
     fontSize: 14,
   },
   playButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
@@ -430,8 +554,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   icon: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -440,19 +564,19 @@ const styles = StyleSheet.create({
     height: 0,
     backgroundColor: 'transparent',
     borderStyle: 'solid',
-    borderLeftWidth: 24,
+    borderLeftWidth: 22,
     borderRightWidth: 0,
-    borderBottomWidth: 15,
-    borderTopWidth: 15,
+    borderBottomWidth: 14,
+    borderTopWidth: 14,
     borderLeftColor: Colors.text,
     borderRightColor: 'transparent',
     borderBottomColor: 'transparent',
     borderTopColor: 'transparent',
-    marginLeft: 6,
+    marginLeft: 4,
   },
   stopSquare: {
-    width: 28,
-    height: 28,
+    width: 26,
+    height: 26,
     backgroundColor: Colors.text,
     borderRadius: 4,
   },
