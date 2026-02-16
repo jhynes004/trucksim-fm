@@ -10,12 +10,45 @@ import {
   Platform,
   Linking,
   Alert,
+  Modal,
 } from 'react-native';
 import { Colors } from '@/constants/colors';
 
 const WHATSAPP_NUMBER = '+447700183123';
 
+type RequestType = 'song' | 'shoutout' | 'competition';
+
+interface RequestTypeOption {
+  value: RequestType;
+  label: string;
+  icon: string;
+  description: string;
+}
+
+const REQUEST_TYPES: RequestTypeOption[] = [
+  {
+    value: 'song',
+    label: 'Song Request',
+    icon: '🎵',
+    description: 'Request a song to be played',
+  },
+  {
+    value: 'shoutout',
+    label: 'Shout-out',
+    icon: '📣',
+    description: 'Send a shout-out message',
+  },
+  {
+    value: 'competition',
+    label: 'Competition Entry',
+    icon: '🏆',
+    description: 'Enter an active competition',
+  },
+];
+
 export default function RequestScreen() {
+  const [requestType, setRequestType] = useState<RequestType>('song');
+  const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [artistName, setArtistName] = useState('');
   const [songTitle, setSongTitle] = useState('');
   const [yourName, setYourName] = useState('');
