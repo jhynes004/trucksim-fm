@@ -268,14 +268,14 @@ export default function ScheduleScreen() {
                 <Text style={styles.showName}>{show.show_name}</Text>
                 
                 {show.description && (
-                  <Text style={styles.showDescription} numberOfLines={2}>
+                  <Text style={[styles.showDescription, { marginTop: 8 }]} numberOfLines={2}>
                     {show.description}
                   </Text>
                 )}
 
                 {/* Presenter Info */}
                 {show.presenter && (
-                  <View style={styles.presenterInfo}>
+                  <View style={[styles.presenterInfo, { marginTop: 8 }]}>
                     {show.presenter.profile_photo && (
                       <Image
                         source={{
