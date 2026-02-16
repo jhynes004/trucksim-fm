@@ -122,11 +122,11 @@ backend:
         
   - task: "Spotify API integration"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/spotify_service.py, /app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
@@ -134,6 +134,9 @@ backend:
       - working: true
         agent: "testing"
         comment: "✅ Tested GET /api/ endpoint - returns correct {'message': 'Hello World'} response. ✅ Tested POST/GET /api/status endpoints - both working correctly with proper JSON responses and data persistence. All backend APIs are functional and accessible via public URL."
+      - working: true
+        agent: "testing"
+        comment: "✅ COMPREHENSIVE SPOTIFY INTEGRATION TESTING COMPLETE: POST /api/spotify/search endpoint working perfectly. Successfully tested with Calvin Harris - Blessings (as specified) and multiple other songs for consistency (Daft Punk - Get Lucky, The Weeknd - Blinding Lights, Ed Sheeran - Shape of You). All responses include: title, artist, album, valid Spotify CDN URLs (i.scdn.co domain), release date, duration, and Spotify URLs. Album art URLs verified as authentic Spotify CDN. Radio integration also tested - both radio stream (https://radio.trucksim.fm:8000/radio.mp3) and current song API (https://radio.trucksim.fm:8000/currentsong?sid=1) are accessible. Frontend app loads successfully at https://trucksim-stream.preview.emergentagent.com."
 
 frontend:
   - task: "Tab navigation structure"
