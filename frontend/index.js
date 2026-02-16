@@ -1,10 +1,10 @@
 import { registerRootComponent } from 'expo';
 import TrackPlayer from 'react-native-track-player';
 import { ExpoRoot } from 'expo-router';
-import { PlaybackService } from './services/trackPlayerService';
 
 // Register the playback service for background audio
-TrackPlayer.registerPlaybackService(() => PlaybackService);
+// This must be at the top level, before any React rendering
+TrackPlayer.registerPlaybackService(() => require('./services/playbackService'));
 
 // Must be exported or Fast Refresh won't update the context
 export function App() {
