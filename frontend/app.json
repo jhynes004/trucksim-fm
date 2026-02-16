@@ -66,6 +66,17 @@
           "resizeMode": "contain",
           "backgroundColor": "#000000"
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "usesAudioBackgroundMode": true
+          },
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
       ]
     ],
     "experiments": {
