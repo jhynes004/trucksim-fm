@@ -426,6 +426,46 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
   },
+  typeSelectorContainer: {
+    marginBottom: 16,
+  },
+  typeSelector: {
+    backgroundColor: Colors.surface,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  typeSelectorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  typeIcon: {
+    fontSize: 32,
+    marginRight: 16,
+  },
+  typeSelectorText: {
+    flex: 1,
+  },
+  typeSelectorLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  typeSelectorDescription: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  typeSelectorArrow: {
+    fontSize: 16,
+    color: Colors.primary,
+    marginLeft: 12,
+  },
   infoBox: {
     backgroundColor: Colors.surface,
     padding: 16,
@@ -468,20 +508,42 @@ const styles = StyleSheet.create({
     minHeight: 120,
     paddingTop: 16,
   },
+  competitionInputContainer: {
+    position: 'relative',
+  },
+  competitionInput: {
+    paddingLeft: 72,
+  },
+  winPrefix: {
+    position: 'absolute',
+    left: 16,
+    top: 16,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    zIndex: 1,
+  },
+  winPrefixText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: Colors.text,
+  },
+  helperText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
   buttonContainer: {
     marginTop: 12,
-    gap: 12,
   },
   button: {
     padding: 18,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    marginBottom: 12,
   },
   submitButton: {
     backgroundColor: Colors.primary,
@@ -510,5 +572,71 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: Colors.text,
+  },
+  modalClose: {
+    fontSize: 28,
+    color: Colors.textSecondary,
+    paddingHorizontal: 8,
+  },
+  typeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  typeOptionActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.card,
+  },
+  typeOptionIcon: {
+    fontSize: 32,
+    marginRight: 16,
+  },
+  typeOptionText: {
+    flex: 1,
+  },
+  typeOptionLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  typeOptionDescription: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  typeOptionCheck: {
+    fontSize: 24,
+    color: Colors.primary,
+    fontWeight: 'bold',
+    marginLeft: 12,
   },
 });
