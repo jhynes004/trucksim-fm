@@ -132,16 +132,23 @@ export const getLivePresenter = async (): Promise<LivePresenter> => {
     }
     
     // Priority: One-time shows for TODAY take precedence over permanent shows
-    // Sort by: one-time first, then by start time (most recent first)
+    // Then prefer shows with meaningful names over generic ones
+    // Then by start time (later start time = more specific)
     const sortedShows = liveShows.sort((a, b) => {
       // One-time shows first
       if (!a.permanent && b.permanent) return -1;
       if (a.permanent && !b.permanent) return 1;
       
-      // Then by start time (later start time first - more specific)
-      const aStart = new Date(a.start_time).getUTCHours() * 60 + new Date(a.start_time).getUTCMinutes();
-      const bStart = new Date(b.start_time).getUTCHours() * 60 + new Date(b.start_time).getUTCMinutes();
-      return bStart - aStart;
+      // Prefer shows with actual show names over generic ones
+      const aHasName = a.show_name && a.show_name.trim().length > 0;
+      const bHasName = b.show_name && b.show_name.trim().length > 0;
+      if (aHasName && !bHasName) return -1;
+      if (!aHasName && bHasName) return 1;
+      
+      // Then by end time (earlier end time = more specific to current hour)
+      const aEnd = new Date(a.end_time).getUTCHours() * 60 + new Date(a.end_time).getUTCMinutes();
+      const bEnd = new Date(b.end_time).getUTCHours() * 60 + new Date(b.end_time).getUTCMinutes();
+      return aEnd - bEnd;
     });
     
     // Pick the first (highest priority) show
