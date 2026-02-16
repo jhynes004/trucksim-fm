@@ -19,22 +19,29 @@ export const setupPlayer = async (): Promise<boolean> => {
     try {
       await TrackPlayer.setupPlayer({
         autoHandleInterruptions: true,
+        // Keep playing when app loses focus
+        waitForBuffer: true,
       });
       
       await TrackPlayer.updateOptions({
         android: {
+          // Continue playback even when the app is killed
           appKilledPlaybackBehavior: AppKilledPlaybackBehavior.ContinuePlayback,
+          // Don't pause when app goes to background
+          stoppingAppPausesPlayback: false,
         },
+        // What controls to show in notification/lock screen
         capabilities: [
           Capability.Play,
           Capability.Pause,
           Capability.Stop,
         ],
+        // Compact notification capabilities
         compactCapabilities: [
           Capability.Play,
           Capability.Pause,
-          Capability.Stop,
         ],
+        // Notification capabilities
         notificationCapabilities: [
           Capability.Play,
           Capability.Pause,
@@ -44,7 +51,7 @@ export const setupPlayer = async (): Promise<boolean> => {
       });
       
       isSetup = true;
-      console.log('[TrackPlayer] Setup complete');
+      console.log('[TrackPlayer] Setup complete with background playback enabled');
     } catch (error) {
       console.error('[TrackPlayer] Setup error:', error);
       isSetup = false;
