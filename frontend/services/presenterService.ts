@@ -37,10 +37,24 @@ export interface ScheduleItem {
 
 /**
  * Check if a show is currently live based on time
+ * For permanent shows: match day of week and time
+ * For non-permanent shows: must be TODAY (same date) and within time range
  */
 const isShowLive = (show: ScheduleItem, now: Date): boolean => {
   const startTime = new Date(show.start_time);
   const endTime = new Date(show.end_time);
+  
+  const nowHours = now.getUTCHours();
+  const nowMinutes = now.getUTCMinutes();
+  const nowTotalMinutes = nowHours * 60 + nowMinutes;
+  
+  const startHours = startTime.getUTCHours();
+  const startMinutes = startTime.getUTCMinutes();
+  const startTotalMinutes = startHours * 60 + startMinutes;
+  
+  const endHours = endTime.getUTCHours();
+  const endMinutes = endTime.getUTCMinutes();
+  const endTotalMinutes = endHours * 60 + endMinutes;
   
   if (show.permanent) {
     // For permanent/recurring shows, match by day of week and time only
@@ -48,37 +62,21 @@ const isShowLive = (show: ScheduleItem, now: Date): boolean => {
     const nowDay = now.getUTCDay();
     const showDay = startTime.getUTCDay();
     
-    const nowHours = now.getUTCHours();
-    const nowMinutes = now.getUTCMinutes();
-    const nowTotalMinutes = nowHours * 60 + nowMinutes;
-    
-    const startHours = startTime.getUTCHours();
-    const startMinutes = startTime.getUTCMinutes();
-    const startTotalMinutes = startHours * 60 + startMinutes;
-    
-    const endHours = endTime.getUTCHours();
-    const endMinutes = endTime.getUTCMinutes();
-    const endTotalMinutes = endHours * 60 + endMinutes;
-    
     const isSameDay = nowDay === showDay;
     const isWithinTime = nowTotalMinutes >= startTotalMinutes && nowTotalMinutes < endTotalMinutes;
     
-    // Debug logging
-    console.log(`[isShowLive] ${show.show_name}: nowDay=${nowDay}, showDay=${showDay}, ` +
-      `nowTime=${nowHours}:${nowMinutes} (${nowTotalMinutes}min), ` +
-      `showTime=${startHours}:${startMinutes}-${endHours}:${endMinutes} (${startTotalMinutes}-${endTotalMinutes}min), ` +
-      `sameDay=${isSameDay}, withinTime=${isWithinTime}`);
-    
     return isSameDay && isWithinTime;
   } else {
-    // For one-time shows, check if current timestamp is within the exact range
-    const isLive = now >= startTime && now < endTime;
+    // For non-permanent (one-time) shows, check if it's TODAY specifically
+    // Compare year, month, and date
+    const isSameDate = 
+      now.getUTCFullYear() === startTime.getUTCFullYear() &&
+      now.getUTCMonth() === startTime.getUTCMonth() &&
+      now.getUTCDate() === startTime.getUTCDate();
     
-    console.log(`[isShowLive] ${show.show_name} (one-time): ` +
-      `now=${now.toISOString()}, start=${startTime.toISOString()}, end=${endTime.toISOString()}, ` +
-      `isLive=${isLive}`);
+    const isWithinTime = nowTotalMinutes >= startTotalMinutes && nowTotalMinutes < endTotalMinutes;
     
-    return isLive;
+    return isSameDate && isWithinTime;
   }
 };
 
@@ -101,39 +99,58 @@ export const getLivePresenter = async (): Promise<LivePresenter> => {
     const scheduleData = response.data.data as ScheduleItem[];
     const now = new Date();
     
-    console.log(`[PresenterService] Current UTC: ${now.toISOString()}, Day: ${now.getUTCDay()}, Hour: ${now.getUTCHours()}`);
-    console.log(`[PresenterService] Checking ${scheduleData.length} shows for live presenter`);
+    console.log(`[PresenterService] Current UTC: ${now.toISOString()}, Day: ${now.getUTCDay()}, Date: ${now.getUTCDate()}`);
     
-    // Find the currently live show - check permanent shows first as they're recurring
-    // Sort to prioritize permanent shows that match the current time slot
-    const sortedShows = [...scheduleData].sort((a, b) => {
-      // Prioritize permanent shows
-      if (a.permanent && !b.permanent) return -1;
-      if (!a.permanent && b.permanent) return 1;
-      return 0;
-    });
+    // Filter to only shows with a presenter
+    const showsWithPresenter = scheduleData.filter(show => 
+      show.users_permissions_user && show.users_permissions_user.username
+    );
     
-    const liveShow = sortedShows.find(show => {
-      // Skip shows without a presenter
-      if (!show.users_permissions_user) return false;
+    // First, check for non-permanent shows TODAY (they take priority)
+    const todayShow = showsWithPresenter.find(show => {
+      if (show.permanent) return false;
       return isShowLive(show, now);
     });
     
-    if (liveShow && liveShow.users_permissions_user) {
-      const presenter = liveShow.users_permissions_user;
+    if (todayShow && todayShow.users_permissions_user) {
+      const presenter = todayShow.users_permissions_user;
       const photoUrl = presenter.profile_photo?.url 
         ? `https://trucksim.fm${presenter.profile_photo.url}`
         : null;
       
-      console.log('[PresenterService] Found live presenter:', presenter.username, 'Show:', liveShow.show_name);
+      console.log('[PresenterService] Found TODAY live show:', todayShow.show_name, 'by', presenter.username);
       
       return {
         name: presenter.username,
-        description: liveShow.description || '',
-        showName: liveShow.show_name,
+        description: todayShow.description || '',
+        showName: todayShow.show_name || `Live with ${presenter.username}`,
         photoUrl,
         isAutoDJ: false,
-        endTime: liveShow.end_time,
+        endTime: todayShow.end_time,
+      };
+    }
+    
+    // Then, check permanent shows
+    const permanentShow = showsWithPresenter.find(show => {
+      if (!show.permanent) return false;
+      return isShowLive(show, now);
+    });
+    
+    if (permanentShow && permanentShow.users_permissions_user) {
+      const presenter = permanentShow.users_permissions_user;
+      const photoUrl = presenter.profile_photo?.url 
+        ? `https://trucksim.fm${presenter.profile_photo.url}`
+        : null;
+      
+      console.log('[PresenterService] Found PERMANENT live show:', permanentShow.show_name, 'by', presenter.username);
+      
+      return {
+        name: presenter.username,
+        description: permanentShow.description || '',
+        showName: permanentShow.show_name || `Live with ${presenter.username}`,
+        photoUrl,
+        isAutoDJ: false,
+        endTime: permanentShow.end_time,
       };
     }
     
