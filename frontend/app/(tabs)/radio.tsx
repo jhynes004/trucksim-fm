@@ -7,8 +7,10 @@ import {
   Image,
   ActivityIndicator,
   Dimensions,
+  ScrollView,
 } from 'react-native';
 import { Audio } from 'expo-av';
+import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -22,13 +24,12 @@ import { Colors } from '../../constants/colors';
 import { getCurrentSong, CurrentSong } from '../../services/radioService';
 import { searchSpotifyTrack, SpotifyTrack } from '../../services/spotifyService';
 import { getLivePresenter, LivePresenter } from '../../services/presenterService';
+import { getRecentlyPlayed, formatPlayedTime, RecentlyPlayedTrack } from '../../services/recentlyPlayedService';
 
 const { width } = Dimensions.get('window');
-const TURNTABLE_SIZE = width * 0.65;
+const TURNTABLE_SIZE = width * 0.55;
 const STREAM_URL = 'https://radio.trucksim.fm:8000/radio.mp3';
 const LOGO_URL = 'https://trucksim.fm/uploads/TSFM_25_IMG_57adbe1a8b.png';
-
-// Placeholder vinyl image - TruckSimFM logo
 const PLACEHOLDER_ALBUM = 'https://trucksim.fm/uploads/TSFM_25_IMG_57adbe1a8b.png';
 
 // Simple SVG Icons as components
@@ -55,11 +56,13 @@ export default function RadioScreen() {
   });
   const [spotifyData, setSpotifyData] = useState<SpotifyTrack | null>(null);
   const [livePresenter, setLivePresenter] = useState<LivePresenter | null>(null);
+  const [recentlyPlayed, setRecentlyPlayed] = useState<RecentlyPlayedTrack[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [fetchStatus, setFetchStatus] = useState<string>('');
   const [albumArtLoaded, setAlbumArtLoaded] = useState(false);
   const songUpdateInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const presenterUpdateInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recentlyPlayedInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSearchedSong = useRef<string>('');
 
   // Animation value for turntable rotation
@@ -92,16 +95,25 @@ export default function RadioScreen() {
     }
   }, [isPlaying]);
 
-  // Fetch live presenter on mount and periodically
+  // Fetch live presenter and recently played on mount
   useEffect(() => {
     fetchLivePresenter();
+    fetchRecentlyPlayed();
+    
     presenterUpdateInterval.current = setInterval(() => {
       fetchLivePresenter();
     }, 60000); // Update every minute
 
+    recentlyPlayedInterval.current = setInterval(() => {
+      fetchRecentlyPlayed();
+    }, 30000); // Update every 30 seconds
+
     return () => {
       if (presenterUpdateInterval.current) {
         clearInterval(presenterUpdateInterval.current);
+      }
+      if (recentlyPlayedInterval.current) {
+        clearInterval(recentlyPlayedInterval.current);
       }
     };
   }, []);
@@ -145,6 +157,15 @@ export default function RadioScreen() {
       setLivePresenter(presenter);
     } catch (error) {
       console.error('Error fetching live presenter:', error);
+    }
+  };
+
+  const fetchRecentlyPlayed = async () => {
+    try {
+      const tracks = await getRecentlyPlayed(5);
+      setRecentlyPlayed(tracks);
+    } catch (error) {
+      console.error('Error fetching recently played:', error);
     }
   };
 
@@ -193,6 +214,9 @@ export default function RadioScreen() {
   };
 
   const togglePlayback = async () => {
+    // Haptic feedback on button press
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
     try {
       if (isPlaying && sound) {
         await sound.stopAsync();
@@ -207,6 +231,8 @@ export default function RadioScreen() {
         lastSearchedSong.current = '';
         setFetchStatus('');
         setAlbumArtLoaded(false);
+        // Light haptic on stop
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         setIsLoading(true);
         setError(null);
@@ -220,11 +246,15 @@ export default function RadioScreen() {
         setSound(newSound);
         setIsPlaying(true);
         setIsLoading(false);
+        // Success haptic on play
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (err) {
       setError('Failed to play stream');
       setIsLoading(false);
       setIsPlaying(false);
+      // Error haptic
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };
 
@@ -241,7 +271,11 @@ export default function RadioScreen() {
   const displayAlbum = spotifyData?.album;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 20 }]}>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 10 }]}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Header */}
       <View style={styles.header}>
         <Image
@@ -286,7 +320,6 @@ export default function RadioScreen() {
       {/* Turntable with Rotation Animation */}
       <View style={styles.turntableContainer}>
         <Animated.View style={[styles.turntable, animatedStyle]}>
-          {/* Show placeholder while loading */}
           {!albumArtLoaded && (
             <Image
               source={{ uri: PLACEHOLDER_ALBUM }}
@@ -358,7 +391,42 @@ export default function RadioScreen() {
           ? 'Now Playing'
           : 'Tap to Play'}
       </Text>
-    </View>
+
+      {/* Recently Played Section */}
+      {recentlyPlayed.length > 0 && (
+        <View style={styles.recentlyPlayedSection}>
+          <Text style={styles.sectionTitle}>Recently Played</Text>
+          {recentlyPlayed.map((track, index) => (
+            <View key={index} style={styles.recentTrack}>
+              {track.artwork_url ? (
+                <Image 
+                  source={{ uri: track.artwork_url }}
+                  style={styles.recentTrackArt}
+                />
+              ) : (
+                <View style={styles.recentTrackArtPlaceholder}>
+                  <Text style={styles.recentTrackArtText}>🎵</Text>
+                </View>
+              )}
+              <View style={styles.recentTrackInfo}>
+                <Text style={styles.recentTrackTitle} numberOfLines={1}>
+                  {track.song}
+                </Text>
+                <Text style={styles.recentTrackArtist} numberOfLines={1}>
+                  {track.artist}
+                </Text>
+              </View>
+              <Text style={styles.recentTrackTime}>
+                {formatPlayedTime(track.played_at)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Bottom padding for tab bar */}
+      <View style={{ height: 100 }} />
+    </ScrollView>
   );
 }
 
@@ -366,16 +434,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  contentContainer: {
     alignItems: 'center',
+    paddingHorizontal: 16,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   logo: {
-    width: 180,
-    height: 60,
-    marginBottom: 12,
+    width: 160,
+    height: 50,
+    marginBottom: 10,
   },
   liveIndicator: {
     flexDirection: 'row',
@@ -402,9 +473,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
-    marginBottom: 16,
-    marginHorizontal: 20,
-    width: width - 40,
+    marginBottom: 12,
+    width: '100%',
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -451,7 +521,7 @@ const styles = StyleSheet.create({
   turntableContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   turntable: {
     width: TURNTABLE_SIZE,
@@ -460,13 +530,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 8,
+    borderWidth: 6,
     borderColor: Colors.surface,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowRadius: 15,
+    elevation: 8,
   },
   albumArt: {
     width: TURNTABLE_SIZE * 0.7,
@@ -479,83 +549,84 @@ const styles = StyleSheet.create({
   },
   vinylCenter: {
     position: 'absolute',
-    width: TURNTABLE_SIZE * 0.18,
-    height: TURNTABLE_SIZE * 0.18,
-    borderRadius: (TURNTABLE_SIZE * 0.18) / 2,
+    width: TURNTABLE_SIZE * 0.16,
+    height: TURNTABLE_SIZE * 0.16,
+    borderRadius: (TURNTABLE_SIZE * 0.16) / 2,
     backgroundColor: Colors.surface,
     borderWidth: 2,
     borderColor: Colors.primary,
   },
   songInfo: {
     alignItems: 'center',
-    paddingHorizontal: 32,
-    marginBottom: 12,
+    paddingHorizontal: 24,
+    marginBottom: 10,
   },
   songTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
     color: Colors.text,
-    marginBottom: 6,
+    marginBottom: 4,
     textAlign: 'center',
   },
   songArtist: {
-    fontSize: 16,
+    fontSize: 15,
     color: Colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   songAlbum: {
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.textMuted,
     textAlign: 'center',
   },
   statusIndicator: {
     backgroundColor: Colors.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 8,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   statusText: {
     color: Colors.primary,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 8,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   errorText: {
     color: Colors.error,
-    fontSize: 14,
+    fontSize: 13,
   },
   playButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
-    shadowRadius: 12,
+    shadowRadius: 10,
     elevation: 8,
   },
   bottomStatusText: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.textSecondary,
     fontWeight: '600',
+    marginBottom: 20,
   },
   icon: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -564,10 +635,10 @@ const styles = StyleSheet.create({
     height: 0,
     backgroundColor: 'transparent',
     borderStyle: 'solid',
-    borderLeftWidth: 22,
+    borderLeftWidth: 20,
     borderRightWidth: 0,
-    borderBottomWidth: 14,
-    borderTopWidth: 14,
+    borderBottomWidth: 12,
+    borderTopWidth: 12,
     borderLeftColor: Colors.text,
     borderRightColor: 'transparent',
     borderBottomColor: 'transparent',
@@ -575,9 +646,66 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   stopSquare: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
     backgroundColor: Colors.text,
-    borderRadius: 4,
+    borderRadius: 3,
+  },
+  // Recently Played Section
+  recentlyPlayedSection: {
+    width: '100%',
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.text,
+    marginBottom: 12,
+  },
+  recentTrack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  recentTrackArt: {
+    width: 44,
+    height: 44,
+    borderRadius: 6,
+    backgroundColor: Colors.card,
+  },
+  recentTrackArtPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 6,
+    backgroundColor: Colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recentTrackArtText: {
+    fontSize: 20,
+  },
+  recentTrackInfo: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 8,
+  },
+  recentTrackTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  recentTrackArtist: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  recentTrackTime: {
+    fontSize: 11,
+    color: Colors.textMuted,
   },
 });
