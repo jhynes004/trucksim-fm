@@ -90,17 +90,15 @@ const HeartIcon = ({ filled, color }: { filled: boolean; color: string }) => (
 );
 
 const MoonIcon = ({ color }: { color: string }) => (
-  <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
-    <View style={{
-      width: 18,
-      height: 18,
-      borderRadius: 9,
-      borderWidth: 2,
-      borderColor: color,
-      borderRightColor: 'transparent',
-      transform: [{ rotate: '-45deg' }],
-    }} />
-  </View>
+  <Image
+    source={require('../../assets/images/moon-icon.png')}
+    style={{ 
+      width: 20, 
+      height: 20, 
+      tintColor: color,
+    }}
+    resizeMode="contain"
+  />
 );
 
 export default function RadioScreen() {
