@@ -22,6 +22,9 @@ class SpotifyService:
         
         # Get new token using Basic Auth
         auth_url = 'https://accounts.spotify.com/api/token'
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
         auth_data = {
             'grant_type': 'client_credentials'
         }
@@ -31,6 +34,7 @@ class SpotifyService:
             from requests.auth import HTTPBasicAuth
             response = requests.post(
                 auth_url, 
+                headers=headers,
                 data=auth_data, 
                 auth=HTTPBasicAuth(self.client_id, self.client_secret),
                 timeout=10
