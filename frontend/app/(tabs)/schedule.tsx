@@ -92,8 +92,8 @@ export default function ScheduleScreen() {
 
   const filterScheduleByDay = (dayIndex: number) => {
     // Get the target date for the selected day
-    const today = new Date();
-    const currentDay = today.getUTCDay(); // Use UTC to match schedule data
+    const now = new Date();
+    const currentDay = now.getUTCDay(); // Use UTC to match schedule data
     
     // Calculate how many days to add to get to the selected day this week
     let daysToAdd = dayIndex - currentDay;
@@ -101,65 +101,74 @@ export default function ScheduleScreen() {
       daysToAdd += 7; // If the day has passed this week, show next week
     }
     
-    const targetDate = new Date(today);
-    targetDate.setUTCDate(today.getUTCDate() + daysToAdd);
+    const targetDate = new Date(now);
+    targetDate.setUTCDate(now.getUTCDate() + daysToAdd);
     targetDate.setUTCHours(0, 0, 0, 0);
 
     console.log('Filtering for date:', targetDate.toISOString(), 'dayIndex:', dayIndex);
 
-    // Track unique shows by time slot + presenter to deduplicate
+    // Track unique shows by time slot to deduplicate
+    // Key format: "HHMM-showname" - one-time shows take priority over permanent
     const uniqueShowsMap = new Map<string, ScheduleShow>();
 
-    // Filter shows
+    // First pass: Process ONE-TIME shows for the target date
     schedule.forEach((show) => {
-      const showDate = new Date(show.start_time);
-      const showDay = showDate.getUTCDay(); // Use UTC
+      if (show.permanent) return; // Skip permanent shows in first pass
       
-      // For permanent shows, check if they occur on this day of week
-      if (show.permanent) {
-        const isCorrectDayOfWeek = showDay === dayIndex;
-        
-        // Check if this specific date is excluded
-        let isExcluded = false;
-        if (show.excluded_dates && Array.isArray(show.excluded_dates)) {
-          isExcluded = show.excluded_dates.some((excludedDate: string) => {
-            const excluded = new Date(excludedDate);
-            return excluded.getUTCFullYear() === targetDate.getUTCFullYear() &&
-                   excluded.getUTCMonth() === targetDate.getUTCMonth() &&
-                   excluded.getUTCDate() === targetDate.getUTCDate();
-          });
+      const showDate = new Date(show.start_time);
+      
+      // Check if this one-time show is for the target date
+      const isSameDate = 
+        showDate.getUTCFullYear() === targetDate.getUTCFullYear() &&
+        showDate.getUTCMonth() === targetDate.getUTCMonth() &&
+        showDate.getUTCDate() === targetDate.getUTCDate();
+      
+      if (isSameDate) {
+        const startMins = showDate.getUTCHours() * 60 + showDate.getUTCMinutes();
+        const key = `${startMins.toString().padStart(4, '0')}`;
+        uniqueShowsMap.set(key, show);
+      }
+    });
+
+    // Second pass: Process PERMANENT shows (only add if time slot not taken by one-time)
+    schedule.forEach((show) => {
+      if (!show.permanent) return; // Skip non-permanent shows in second pass
+      
+      const showDate = new Date(show.start_time);
+      const showDay = showDate.getUTCDay();
+      
+      // Check if this permanent show is for the correct day of week
+      if (showDay !== dayIndex) return;
+      
+      // Check if perm_end has passed
+      if (show.perm_end) {
+        const permEndDate = new Date(show.perm_end);
+        if (permEndDate < now) {
+          console.log('Skipping ended permanent show:', show.show_name);
+          return;
         }
-        
-        if (isCorrectDayOfWeek && !isExcluded) {
-          // Create unique key: time + presenter
-          const startMins = showDate.getUTCHours() * 60 + showDate.getUTCMinutes();
-          const presenter = show.presenter?.username || 'unknown';
-          const key = `${startMins}-${presenter}-permanent`;
-          
-          // Only add if not already present (prefer first occurrence)
-          if (!uniqueShowsMap.has(key)) {
-            uniqueShowsMap.set(key, show);
-          }
+      }
+      
+      // Check if this specific date is excluded
+      if (show.excluded_dates && Array.isArray(show.excluded_dates)) {
+        const isExcluded = show.excluded_dates.some((excludedDateStr: string) => {
+          const excluded = new Date(excludedDateStr);
+          return excluded.getUTCFullYear() === targetDate.getUTCFullYear() &&
+                 excluded.getUTCMonth() === targetDate.getUTCMonth() &&
+                 excluded.getUTCDate() === targetDate.getUTCDate();
+        });
+        if (isExcluded) {
+          console.log('Skipping excluded permanent show:', show.show_name);
+          return;
         }
-      } else {
-        // For non-permanent shows, check exact date match
-        const isSameDate = 
-          showDate.getUTCFullYear() === targetDate.getUTCFullYear() &&
-          showDate.getUTCMonth() === targetDate.getUTCMonth() &&
-          showDate.getUTCDate() === targetDate.getUTCDate();
-        
-        if (isSameDate) {
-          const startMins = showDate.getUTCHours() * 60 + showDate.getUTCMinutes();
-          const presenter = show.presenter?.username || 'unknown';
-          const key = `${startMins}-${presenter}-onetime`;
-          
-          // One-time shows override permanent shows
-          const permanentKey = `${startMins}-${presenter}-permanent`;
-          if (uniqueShowsMap.has(permanentKey)) {
-            uniqueShowsMap.delete(permanentKey);
-          }
-          uniqueShowsMap.set(key, show);
-        }
+      }
+      
+      const startMins = showDate.getUTCHours() * 60 + showDate.getUTCMinutes();
+      const key = `${startMins.toString().padStart(4, '0')}`;
+      
+      // Only add permanent show if time slot is not already taken by a one-time show
+      if (!uniqueShowsMap.has(key)) {
+        uniqueShowsMap.set(key, show);
       }
     });
 
