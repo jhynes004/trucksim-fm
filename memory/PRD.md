@@ -1,114 +1,98 @@
 # TruckSimFM Radio App - Product Requirements Document
 
 ## Original Problem Statement
-Build a mobile application for the online radio station `trucksim.fm` with the following features:
-- **Streaming**: Listen to the live stream from `https://radio.trucksim.fm:8000/radio.mp3`
-- **Now Playing**: Fetch the current song from `https://radio.trucksim.fm:8000/currentsong?sid=1`
-- **Spotify Integration**: Use Spotify API to get album art and metadata for the currently playing song
-- **Turntable UI**: Display the album art on a spinning turntable animation
-- **Song Requests**: Native UI to handle song requests via WhatsApp with dropdown for different request types
-- **Schedule**: Native UI to display the show schedule
-- **Listener Stats**: A tab that embeds `https://radiostats.info` in a WebView
-- **Socials Tab**: A tab with links and logos for WhatsApp, Discord, Facebook, and X (Twitter)
-- **Branding**: The app's color scheme, logo, icon, and splash screen should match the `trucksim.fm` branding
-- **Navigation**: Tab-based navigation structure
-- **Deployment**: Prepare for app store deployment
+Build a mobile application for the online radio station `trucksim.fm`.
 
 ## Architecture
 - **Frontend**: Expo (React Native) with TypeScript
 - **Backend**: FastAPI (Python) as BFF proxy
 - **Database**: None (uses external APIs)
-- **Key Libraries**: expo-av, expo-router, react-native-reanimated, react-native-webview, expo-haptics, spotipy
+- **Key Libraries**: expo-av, expo-router, react-native-reanimated, react-native-webview, expo-haptics
 
 ## What's Been Implemented
 
 ### Core Features (Completed)
 1. **Radio Tab**: Live streaming with spinning turntable, Spotify album art integration
 2. **Request Tab**: Dropdown for Song Request, Shout-out, Competition Entry with WhatsApp integration
-3. **Schedule Tab**: Day-based filtering of shows from trucksim.fm API
+3. **Schedule Tab**: Day-based filtering with proper UTC handling
 4. **Stats Tab**: WebView embedding radiostats.info
 5. **Socials Tab**: Links to WhatsApp, Discord, Facebook, X with official logos
 6. **Branding**: Custom app icon and splash screen
 
-### Session Feb 16, 2026 - Major Enhancements
+### Session Feb 16, 2026 - Fixes & Enhancements
 
-#### 1. Safe Area & Navigation Fixes
-- All tabs now use `useSafeAreaInsets()` to prevent content from being hidden behind device navigation bars
-- Tab bar height dynamically adjusts based on device safe area
+#### 1. Safe Area & Tab Bar Fix
+- All tabs use `useSafeAreaInsets()` to prevent content being hidden by device navigation
+- Tab bar height dynamically adjusts
 
-#### 2. Live Presenter Feature (Fixed)
-- Created `presenterService.ts` with UTC time matching
-- Now properly distinguishes between permanent (recurring) and one-time shows
-- For one-time shows: Only matches if the show date is TODAY
-- For permanent shows: Matches day-of-week and time slot
-- Falls back to "DJ Cruise Control" when no show is live
+#### 2. Live Presenter Detection (Fixed)
+- Uses UTC time consistently
+- Permanent shows: Match day-of-week and time, respect `perm_end` dates
+- One-time shows: Only match if scheduled for TODAY (exact date match)
+- Shows "DJ Cruise Control" as auto-DJ when no show is live
 
-#### 3. Schedule Tab Improvements
-- Fixed duplicate show entries by using a Map with unique keys
-- Proper UTC time handling for day-of-week matching
-- One-time shows properly override permanent shows for the same time slot
+#### 3. Schedule Improvements
+- Fixed duplicate show entries
+- Uses UTC consistently (`getUTCDay()`, `getUTCHours()`, etc.)
+- Proper handling of `perm_end` - skips shows that have ended
+- One-time shows override permanent shows for the same time slot
 - Shows sorted by start time
 
-#### 4. Placeholder Album Art
-- User-provided logo saved to `/app/frontend/assets/images/placeholder-album.png`
-- Displayed on turntable when no Spotify album art is available
-- Also used in recently played section when tracks lack artwork
+#### 4. Custom Placeholder Album Art
+- User-provided logo at `/app/frontend/assets/images/placeholder-album.png`
+- Displayed on turntable when no Spotify art available
+- Also used in recently played section
 
 #### 5. Sleep Timer
 - Modal with options: 5, 15, 30, 45, 60, 90 minutes
-- Countdown displayed next to a moon icon
-- Automatically stops playback when timer expires
-- Can cancel timer by tapping again
+- Moon icon displays next to LIVE indicator when playing
+- Countdown shown when timer active
+- Auto-stops playback when timer expires
 - Haptic feedback when timer completes
 
-#### 6. Like/Favorite Button
-- Each recently played track has a 👍 button
-- Calls `/api/like-song/{documentId}` to increment likes on TruckSimFM
-- Prevents double-liking in the same session
-- Shows updated like count after liking
-
-#### 7. Updated Tab Icons
+#### 6. Updated Tab Icons
 - Radio tab: Vintage radio icon with antenna and dial
 - Request tab: Mail/envelope icon
 
-#### 8. Haptic Feedback
-- Play/Stop button: Medium impact + success/error notification
-- Sleep timer selection: Medium impact
-- Sleep timer cancel: Light impact
-- Like button: Light impact + success notification
-- Request form submit/clear: Medium/Light impact
-- Social links: Medium impact
+#### 7. Like Count Display
+- Shows existing like count on recently played tracks (read-only)
+- Note: TruckSimFM API doesn't allow external writes (403 Forbidden)
 
-## Files Modified (Feb 16, 2026)
-- `/app/backend/server.py` - Added `/api/recently-played` with documentId, `/api/like-song/{documentId}` endpoint
-- `/app/frontend/services/presenterService.ts` - Fixed UTC time matching, separate logic for permanent vs one-time shows
-- `/app/frontend/services/recentlyPlayedService.ts` - Added `likeSong()` function, `documentId` field
-- `/app/frontend/app/(tabs)/radio.tsx` - Added sleep timer, like button, placeholder image
-- `/app/frontend/app/(tabs)/schedule.tsx` - Fixed deduplication and UTC day matching
-- `/app/frontend/app/(tabs)/_layout.tsx` - Updated Radio and Request tab icons
-- `/app/frontend/assets/images/placeholder-album.png` - User-provided placeholder image
+#### 8. Haptic Feedback
+- Added `expo-haptics` calls to all interactive elements
+- Note: Works on physical devices only, not simulators
 
 ## API Endpoints
 - `GET /api/current-song` - Proxies TruckSimFM current song
 - `GET /api/schedule` - Proxies TruckSimFM schedule with presenter data
 - `POST /api/spotify/search` - Searches Spotify for track metadata
-- `GET /api/recently-played?limit=5` - Returns recently played songs with documentId for liking
-- `POST /api/like-song/{documentId}` - Increments like count on TruckSimFM
+- `GET /api/recently-played?limit=5` - Returns recently played songs
 
-## Known Issue: Live Presenter Detection
-The TruckSimFM website appears to use a separate "live now" indicator that may differ from schedule data. The current implementation relies solely on schedule matching. If a DJ goes live outside their scheduled time, or extends beyond it, the app won't reflect this. A more accurate solution would require access to TruckSimFM's real-time "now playing" DJ endpoint if one exists.
+## Known Limitations
+
+### Live Presenter
+The TruckSimFM schedule data includes historical shows. The current implementation:
+1. Filters permanent shows by `perm_end` date
+2. Only matches one-time shows for TODAY
+3. Cannot detect live DJs outside of scheduled times
+
+### Like Feature
+TruckSimFM's API returns 403 Forbidden for PUT requests, so we can only display existing like counts, not add new likes.
+
+### Haptic Feedback
+`expo-haptics` only works on physical devices. Simulators/emulators don't support haptic feedback.
 
 ## Remaining Tasks
 
 ### P0 - Blockers
-- User needs to build APK/IPA on local machine
+- Build APK/IPA on user's local machine
 
-### P2 - Nice to Have
-- Real-time presenter detection (if TruckSimFM exposes API)
-- Font loading error investigation
+### P2 - Nice to Have  
+- Real-time presenter detection API (if TruckSimFM exposes one)
 
-## Deployment Notes
-- Backend deployed at: https://trucksim-radio-1.preview.emergentagent.com
-- EAS configured in `/app/frontend/eas.json`
-- User must run `eas build` on their local machine with EAS CLI
-- See `/app/DEPLOYMENT.md` for detailed instructions
+## File Changes (Feb 16, 2026)
+- `/app/frontend/services/presenterService.ts` - Fixed UTC handling, perm_end checks
+- `/app/frontend/app/(tabs)/schedule.tsx` - Fixed deduplication, UTC day matching, perm_end
+- `/app/frontend/app/(tabs)/radio.tsx` - Sleep timer, placeholder image, read-only likes
+- `/app/frontend/app/(tabs)/_layout.tsx` - Updated tab icons
+- `/app/frontend/assets/images/placeholder-album.png` - User-provided image
