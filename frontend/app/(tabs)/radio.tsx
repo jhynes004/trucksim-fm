@@ -9,9 +9,8 @@ import {
   Dimensions,
   ScrollView,
   Modal,
-  Alert,
 } from 'react-native';
-import { Audio } from 'expo-av';
+import TrackPlayer, { usePlaybackState, State } from 'react-native-track-player';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
@@ -27,10 +26,16 @@ import { getCurrentSong, CurrentSong } from '../../services/radioService';
 import { searchSpotifyTrack, SpotifyTrack } from '../../services/spotifyService';
 import { getLivePresenter, LivePresenter } from '../../services/presenterService';
 import { getRecentlyPlayed, formatPlayedTime, RecentlyPlayedTrack } from '../../services/recentlyPlayedService';
+import { 
+  setupPlayer, 
+  addStreamTrack, 
+  updateNowPlaying,
+  playStream,
+  stopStream 
+} from '../../services/trackPlayerService';
 
 const { width } = Dimensions.get('window');
 const TURNTABLE_SIZE = width * 0.55;
-const STREAM_URL = 'https://radio.trucksim.fm:8000/radio.mp3';
 const LOGO_URL = 'https://trucksim.fm/uploads/TSFM_25_IMG_57adbe1a8b.png';
 
 // Use the bundled placeholder image
@@ -52,43 +57,6 @@ const StopIcon = () => (
   </View>
 );
 
-const HeartIcon = ({ filled, color }: { filled: boolean; color: string }) => (
-  <View style={{ width: 20, height: 20, alignItems: 'center', justifyContent: 'center' }}>
-    <View style={{
-      width: 14,
-      height: 14,
-      backgroundColor: filled ? color : 'transparent',
-      borderWidth: filled ? 0 : 2,
-      borderColor: color,
-      borderRadius: 2,
-      transform: [{ rotate: '45deg' }],
-    }}>
-      <View style={{
-        position: 'absolute',
-        top: -7,
-        left: 0,
-        width: 14,
-        height: 14,
-        backgroundColor: filled ? color : 'transparent',
-        borderWidth: filled ? 0 : 2,
-        borderColor: color,
-        borderRadius: 7,
-      }} />
-      <View style={{
-        position: 'absolute',
-        left: -7,
-        top: 0,
-        width: 14,
-        height: 14,
-        backgroundColor: filled ? color : 'transparent',
-        borderWidth: filled ? 0 : 2,
-        borderColor: color,
-        borderRadius: 7,
-      }} />
-    </View>
-  </View>
-);
-
 const MoonIcon = ({ color }: { color: string }) => (
   <Image
     source={require('../../assets/images/moon-icon.png')}
@@ -103,8 +71,8 @@ const MoonIcon = ({ color }: { color: string }) => (
 
 export default function RadioScreen() {
   const insets = useSafeAreaInsets();
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const playbackState = usePlaybackState();
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentSong, setCurrentSong] = useState<CurrentSong>({
     title: 'TruckSimFM',
@@ -128,25 +96,8 @@ export default function RadioScreen() {
   const recentlyPlayedInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSearchedSong = useRef<string>('');
 
-  // Configure audio for background playback
-  useEffect(() => {
-    const setupAudio = async () => {
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          staysActiveInBackground: true,
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: true,
-          playThroughEarpieceAndroid: false,
-        });
-        console.log('[RadioScreen] Audio mode configured for background playback');
-      } catch (err) {
-        console.error('[RadioScreen] Error setting audio mode:', err);
-      }
-    };
-    
-    setupAudio();
-  }, []);
+  // Determine if playing from playback state
+  const isPlaying = playbackState.state === State.Playing || playbackState.state === State.Buffering;
 
   // Animation value for turntable rotation
   const rotation = useSharedValue(0);
@@ -157,6 +108,15 @@ export default function RadioScreen() {
       transform: [{ rotate: `${rotation.value}deg` }],
     };
   });
+
+  // Initialize track player
+  useEffect(() => {
+    const initPlayer = async () => {
+      const ready = await setupPlayer();
+      setIsPlayerReady(ready);
+    };
+    initPlayer();
+  }, []);
 
   // Start/stop rotation based on playback state
   useEffect(() => {
@@ -204,9 +164,6 @@ export default function RadioScreen() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
       if (songUpdateInterval.current) {
         clearInterval(songUpdateInterval.current);
       }
@@ -244,7 +201,7 @@ export default function RadioScreen() {
         setSleepTimeRemaining(prev => {
           if (prev <= 1) {
             // Time's up - stop playback
-            stopPlayback();
+            handleStop();
             setSleepTimerActive(false);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             return 0;
@@ -288,6 +245,10 @@ export default function RadioScreen() {
       setFetchStatus(gotMessage);
       setCurrentSong(song);
       
+      // Update the notification with new song info
+      const artworkUrl = spotifyData?.album_art_url || LOGO_URL;
+      await updateNowPlaying(song.title || 'TruckSimFM', song.artist || 'Live Radio', artworkUrl);
+      
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       if (song.artist && song.title && 
@@ -306,6 +267,12 @@ export default function RadioScreen() {
           if (spotifyResult && spotifyResult.album_art_url) {
             setFetchStatus('✓ Spotify loaded');
             setSpotifyData(spotifyResult);
+            // Update notification with album art
+            await updateNowPlaying(
+              spotifyResult.title || song.title || 'TruckSimFM',
+              spotifyResult.artist || song.artist || 'Live Radio',
+              spotifyResult.album_art_url
+            );
           } else {
             setFetchStatus('No Spotify match');
             setSpotifyData(null);
@@ -323,12 +290,9 @@ export default function RadioScreen() {
     }
   };
 
-  const stopPlayback = async () => {
-    if (sound) {
-      await sound.stopAsync();
-      await sound.unloadAsync();
-      setSound(null);
-      setIsPlaying(false);
+  const handleStop = async () => {
+    try {
+      await stopStream();
       setCurrentSong({
         title: 'TruckSimFM',
         artist: 'Tap Play to Start',
@@ -337,46 +301,42 @@ export default function RadioScreen() {
       lastSearchedSong.current = '';
       setFetchStatus('');
       setAlbumArtLoaded(false);
+      // Cancel sleep timer when stopping manually
+      setSleepTimerActive(false);
+      setSleepTimeRemaining(0);
+    } catch (err) {
+      console.error('Error stopping stream:', err);
     }
   };
 
   const togglePlayback = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
+    if (!isPlayerReady) {
+      setError('Player not ready. Please try again.');
+      return;
+    }
+    
     try {
-      if (isPlaying && sound) {
-        await stopPlayback();
-        // Cancel sleep timer when stopping manually
-        setSleepTimerActive(false);
-        setSleepTimeRemaining(0);
+      if (isPlaying) {
+        await handleStop();
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         setIsLoading(true);
         setError(null);
-
-        const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: STREAM_URL },
-          { shouldPlay: true, volume: 1.0 },
-          onPlaybackStatusUpdate
-        );
-
-        setSound(newSound);
-        setIsPlaying(true);
+        
+        // Add the stream track and start playing
+        await addStreamTrack('TruckSimFM', 'Live Radio', LOGO_URL);
+        await playStream();
+        
         setIsLoading(false);
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (err) {
+      console.error('Playback error:', err);
       setError('Failed to play stream');
       setIsLoading(false);
-      setIsPlaying(false);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    }
-  };
-
-  const onPlaybackStatusUpdate = (status: any) => {
-    if (status.error) {
-      setError('Stream playback error');
-      setIsPlaying(false);
     }
   };
 
@@ -528,7 +488,7 @@ export default function RadioScreen() {
       <TouchableOpacity
         style={styles.playButton}
         onPress={togglePlayback}
-        disabled={isLoading}
+        disabled={isLoading || !isPlayerReady}
         data-testid="play-stop-button"
       >
         {isLoading ? (
@@ -542,7 +502,9 @@ export default function RadioScreen() {
 
       {/* Stream Status */}
       <Text style={styles.bottomStatusText}>
-        {isLoading
+        {!isPlayerReady
+          ? 'Initializing...'
+          : isLoading
           ? 'Connecting...'
           : isPlaying
           ? 'Now Playing'
