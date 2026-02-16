@@ -7,12 +7,28 @@ from typing import Optional, Dict, Any
 logger = logging.getLogger(__name__)
 
 class SpotifyService:
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+    
     def __init__(self):
+        if self._initialized:
+            return
+        
         self.client_id = os.environ.get('SPOTIFY_CLIENT_ID')
         self.client_secret = os.environ.get('SPOTIFY_CLIENT_SECRET')
         self.access_token = None
         self.token_expires_at = None
-        logger.info(f'Spotify service initialized. Client ID length: {len(self.client_id) if self.client_id else 0}')
+        self._initialized = True
+        
+        if not self.client_id or not self.client_secret:
+            logger.error('Spotify credentials not found in environment variables')
+        else:
+            logger.info(f'Spotify service initialized. Client ID present: {bool(self.client_id)}')
         
     def _get_access_token(self) -> str:
         """Get Spotify access token using client credentials flow"""
