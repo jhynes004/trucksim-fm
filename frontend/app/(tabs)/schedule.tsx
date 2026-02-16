@@ -205,6 +205,7 @@ export default function ScheduleScreen() {
             style={[
               styles.dayButton,
               selectedDay === index && styles.dayButtonActive,
+              index < DAYS.length - 1 && { marginRight: 8 },
             ]}
             onPress={() => setSelectedDay(index)}
           >
