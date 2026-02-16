@@ -12,7 +12,7 @@ import {
   Alert,
   Modal,
 } from 'react-native';
-import { Colors } from '@/constants/colors';
+import { Colors } from '../../constants/colors';
 
 const WHATSAPP_NUMBER = '+447700183123';
 
