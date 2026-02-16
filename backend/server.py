@@ -113,6 +113,32 @@ async def get_current_song():
             "data": "TruckSimFM - Live Radio"
         }
 
+@api_router.get("/schedule")
+async def get_schedule():
+    """Proxy endpoint to fetch schedule from TruckSimFM (avoids CORS issues)"""
+    import requests
+    try:
+        response = requests.get(
+            'https://www.trucksim.fm/api/schedules?populate=*',
+            timeout=10
+        )
+        response.raise_for_status()
+        data = response.json()
+        
+        logger.info(f"Fetched {len(data.get('data', []))} schedule items")
+        
+        return {
+            "success": True,
+            "data": data.get('data', [])
+        }
+    except Exception as e:
+        logger.error(f"Error fetching schedule: {e}")
+        return {
+            "success": False,
+            "data": [],
+            "error": str(e)
+        }
+
 # Include the router in the main app
 app.include_router(api_router)
 
