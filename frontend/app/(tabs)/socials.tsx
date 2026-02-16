@@ -46,7 +46,8 @@ const SOCIAL_LINKS: SocialLink[] = [
 export default function SocialsScreen() {
   const insets = useSafeAreaInsets();
   
-  const openSocialLink = (link: SocialLink) => {
+  const openSocialLink = async (link: SocialLink) => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Linking.canOpenURL(link.url)
       .then((supported) => {
         if (supported) {
