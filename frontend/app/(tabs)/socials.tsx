@@ -111,7 +111,7 @@ export default function SocialsScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            💡 Tap any platform to open it in your browser or app
+            💡 Tap any platform to open it in your browser, or the corresponding app if installed
           </Text>
         </View>
       </ScrollView>
