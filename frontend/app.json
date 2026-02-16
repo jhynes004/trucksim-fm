@@ -20,7 +20,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Access camera to share photos in chat",
         "NSMicrophoneUsageDescription": "Access microphone for voice messages",
-        "NSPhotoLibraryUsageDescription": "Access photos to share in chat"
+        "NSPhotoLibraryUsageDescription": "Access photos to share in chat",
+        "UIBackgroundModes": ["audio"]
       }
     },
     "android": {
