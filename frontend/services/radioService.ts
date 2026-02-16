@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const RADIO_BASE_URL = 'https://radio.trucksim.fm:8000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
 export interface CurrentSong {
   title?: string;
@@ -10,75 +10,116 @@ export interface CurrentSong {
 }
 
 /**
- * Capitalize first letter of each word
+ * Smart title case that preserves certain patterns
  */
-const titleCase = (str: string): string => {
+const smartTitleCase = (str: string): string => {
+  // Preserve common patterns
+  const preservePatterns = ['DJ', 'MC', 'ft', 'feat', 'vs', 'x'];
+  
   return str
-    .toLowerCase()
     .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map(word => {
+      const lower = word.toLowerCase();
+      
+      // Check if it's a special pattern to preserve
+      if (preservePatterns.some(p => lower === p || lower === p + '.')) {
+        return lower;
+      }
+      
+      // Handle words with parentheses or brackets
+      if (word.includes('(') || word.includes('[')) {
+        return word.split(/([(\[])/g).map(part => {
+          if (part === '(' || part === '[') return part;
+          return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+        }).join('');
+      }
+      
+      // Regular title case
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
     .join(' ');
 };
 
 /**
- * Fetch the current playing song from TruckSimFM
+ * Parse artist - title format with all variations
+ */
+const parseSongString = (text: string): { artist: string; title: string } | null => {
+  // Try different separator patterns
+  const separators = [' - ', ' – ', ' — ', ' | ', ' / '];
+  
+  for (const sep of separators) {
+    const index = text.indexOf(sep);
+    if (index > 0) {
+      const artist = text.substring(0, index).trim();
+      const title = text.substring(index + sep.length).trim();
+      
+      if (artist && title) {
+        return {
+          artist: smartTitleCase(artist),
+          title: smartTitleCase(title),
+        };
+      }
+    }
+  }
+  
+  return null;
+};
+
+/**
+ * Fetch the current playing song from TruckSimFM via backend proxy
  */
 export const getCurrentSong = async (): Promise<CurrentSong> => {
   try {
-    const response = await axios.get(`${RADIO_BASE_URL}/currentsong?sid=1`, {
-      timeout: 5000,
+    console.log('[RadioService] Fetching from backend:', `${BACKEND_URL}/api/current-song`);
+    
+    const response = await axios.get(`${BACKEND_URL}/api/current-song`, {
+      timeout: 8000,
     });
     
-    const data = response.data;
-    console.log('[RadioService] Raw response:', JSON.stringify(data));
-    console.log('[RadioService] Response type:', typeof data);
+    console.log('[RadioService] Response:', response.data);
     
-    // If it's a string, try to parse it
-    if (typeof data === 'string') {
-      const trimmed = data.trim();
-      console.log('[RadioService] Trimmed string:', trimmed);
+    if (!response.data || !response.data.success) {
+      throw new Error('Backend returned unsuccessful response');
+    }
+    
+    const songText = response.data.data;
+    console.log('[RadioService] Song text:', songText);
+    
+    if (typeof songText === 'string') {
+      const trimmed = songText.trim();
       
-      // Common format: "artist - title" (case-insensitive)
-      const dashIndex = trimmed.indexOf(' - ');
-      console.log('[RadioService] Dash index:', dashIndex);
+      // Try to parse it
+      const parsed = parseSongString(trimmed);
       
-      if (dashIndex > 0) {
-        const artist = trimmed.substring(0, dashIndex).trim();
-        const title = trimmed.substring(dashIndex + 3).trim();
-        
-        console.log('[RadioService] Parsed - Artist:', artist, 'Title:', title);
-        
-        const result = {
-          artist: titleCase(artist),
-          title: titleCase(title),
-          rawData: data,
+      if (parsed) {
+        console.log('[RadioService] Parsed successfully:', parsed);
+        return {
+          artist: parsed.artist,
+          title: parsed.title,
+          rawData: songText,
         };
-        
-        console.log('[RadioService] Final result:', result);
-        return result;
       }
       
-      console.log('[RadioService] No dash found, returning as title only');
-      // If no dash found, return as title
+      console.log('[RadioService] Could not parse, returning as title only');
+      // If parsing fails, return as title
       return {
-        title: titleCase(trimmed),
+        title: smartTitleCase(trimmed),
         artist: 'Unknown Artist',
-        rawData: data,
+        rawData: songText,
       };
     }
     
-    console.log('[RadioService] Data is object, not string');
-    // If it's already an object
-    return {
-      title: data.title || data.song || '',
-      artist: data.artist || '',
-      album: data.album || '',
-      rawData: JSON.stringify(data),
-    };
+    console.log('[RadioService] Unexpected data format');
+    throw new Error('Unexpected data format');
+    
   } catch (error) {
     console.error('[RadioService] Error:', error);
     if (axios.isAxiosError(error)) {
-      console.error('[RadioService] Axios error:', error.message, error.response?.status);
+      console.error('[RadioService] Axios error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
     }
     return {
       title: 'TruckSimFM',
