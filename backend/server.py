@@ -153,6 +153,46 @@ async def get_schedule():
             "error": str(e)
         }
 
+@api_router.get("/recently-played")
+async def get_recently_played(limit: int = 5):
+    """Proxy endpoint to fetch recently played songs from TruckSimFM"""
+    import requests
+    try:
+        # Fetch playlist data sorted by most recent first
+        # The API returns items sorted by ID desc which corresponds to most recent
+        response = requests.get(
+            f'https://www.trucksim.fm/api/playlists?pagination[limit]={limit}&pagination[start]=0&sort[0]=id:desc',
+            timeout=10
+        )
+        response.raise_for_status()
+        data = response.json()
+        
+        items = data.get('data', [])
+        logger.info(f"Fetched {len(items)} recently played items")
+        
+        # Format the response
+        formatted = []
+        for item in items:
+            formatted.append({
+                "artist": item.get("artist", "Unknown"),
+                "song": item.get("song", "Unknown"),
+                "artwork_url": item.get("artwork_url"),
+                "played_at": item.get("played_datetime"),
+                "likes": item.get("likes", 0),
+            })
+        
+        return {
+            "success": True,
+            "data": formatted
+        }
+    except Exception as e:
+        logger.error(f"Error fetching recently played: {e}")
+        return {
+            "success": False,
+            "data": [],
+            "error": str(e)
+        }
+
 # Include the router in the main app
 app.include_router(api_router)
 
