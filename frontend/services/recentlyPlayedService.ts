@@ -3,6 +3,8 @@ import axios from 'axios';
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
 export interface RecentlyPlayedTrack {
+  id: number;
+  documentId: string;
   artist: string;
   song: string;
   artwork_url: string | null;
@@ -33,6 +35,30 @@ export const getRecentlyPlayed = async (limit: number = 5): Promise<RecentlyPlay
   } catch (error) {
     console.error('[RecentlyPlayedService] Error fetching recently played:', error);
     return [];
+  }
+};
+
+/**
+ * Like a song on TruckSimFM
+ */
+export const likeSong = async (documentId: string): Promise<{ success: boolean; likes?: number }> => {
+  try {
+    console.log('[RecentlyPlayedService] Liking song:', documentId);
+    
+    const response = await axios.post(`${BACKEND_URL}/api/like-song/${documentId}`, {}, {
+      timeout: 10000,
+    });
+    
+    if (response.data && response.data.success) {
+      console.log('[RecentlyPlayedService] Song liked successfully, new count:', response.data.likes);
+      return { success: true, likes: response.data.likes };
+    }
+    
+    return { success: false };
+    
+  } catch (error) {
+    console.error('[RecentlyPlayedService] Error liking song:', error);
+    return { success: false };
   }
 };
 
