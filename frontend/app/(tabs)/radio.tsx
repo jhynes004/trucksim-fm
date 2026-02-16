@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Dimensions,
   ScrollView,
+  Modal,
+  Alert,
 } from 'react-native';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
@@ -24,13 +26,18 @@ import { Colors } from '../../constants/colors';
 import { getCurrentSong, CurrentSong } from '../../services/radioService';
 import { searchSpotifyTrack, SpotifyTrack } from '../../services/spotifyService';
 import { getLivePresenter, LivePresenter } from '../../services/presenterService';
-import { getRecentlyPlayed, formatPlayedTime, RecentlyPlayedTrack } from '../../services/recentlyPlayedService';
+import { getRecentlyPlayed, formatPlayedTime, likeSong, RecentlyPlayedTrack } from '../../services/recentlyPlayedService';
 
 const { width } = Dimensions.get('window');
 const TURNTABLE_SIZE = width * 0.55;
 const STREAM_URL = 'https://radio.trucksim.fm:8000/radio.mp3';
 const LOGO_URL = 'https://trucksim.fm/uploads/TSFM_25_IMG_57adbe1a8b.png';
-const PLACEHOLDER_ALBUM = 'https://trucksim.fm/uploads/TSFM_25_IMG_57adbe1a8b.png';
+
+// Use the bundled placeholder image
+const PlaceholderAlbum = require('../../assets/images/placeholder-album.png');
+
+// Sleep timer options in minutes
+const SLEEP_OPTIONS = [5, 15, 30, 45, 60, 90];
 
 // Simple SVG Icons as components
 const PlayIcon = () => (
@@ -42,6 +49,57 @@ const PlayIcon = () => (
 const StopIcon = () => (
   <View style={styles.icon}>
     <View style={styles.stopSquare} />
+  </View>
+);
+
+const HeartIcon = ({ filled, color }: { filled: boolean; color: string }) => (
+  <View style={{ width: 20, height: 20, alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{
+      width: 14,
+      height: 14,
+      backgroundColor: filled ? color : 'transparent',
+      borderWidth: filled ? 0 : 2,
+      borderColor: color,
+      borderRadius: 2,
+      transform: [{ rotate: '45deg' }],
+    }}>
+      <View style={{
+        position: 'absolute',
+        top: -7,
+        left: 0,
+        width: 14,
+        height: 14,
+        backgroundColor: filled ? color : 'transparent',
+        borderWidth: filled ? 0 : 2,
+        borderColor: color,
+        borderRadius: 7,
+      }} />
+      <View style={{
+        position: 'absolute',
+        left: -7,
+        top: 0,
+        width: 14,
+        height: 14,
+        backgroundColor: filled ? color : 'transparent',
+        borderWidth: filled ? 0 : 2,
+        borderColor: color,
+        borderRadius: 7,
+      }} />
+    </View>
+  </View>
+);
+
+const MoonIcon = ({ color }: { color: string }) => (
+  <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      borderWidth: 2,
+      borderColor: color,
+      borderRightColor: 'transparent',
+      transform: [{ rotate: '-45deg' }],
+    }} />
   </View>
 );
 
@@ -60,6 +118,16 @@ export default function RadioScreen() {
   const [error, setError] = useState<string | null>(null);
   const [fetchStatus, setFetchStatus] = useState<string>('');
   const [albumArtLoaded, setAlbumArtLoaded] = useState(false);
+  
+  // Sleep timer state
+  const [sleepTimerActive, setSleepTimerActive] = useState(false);
+  const [sleepTimeRemaining, setSleepTimeRemaining] = useState(0);
+  const [showSleepModal, setShowSleepModal] = useState(false);
+  const sleepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  // Like state - track which songs the user has liked this session
+  const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
+  
   const songUpdateInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const presenterUpdateInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const recentlyPlayedInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -127,6 +195,9 @@ export default function RadioScreen() {
       if (songUpdateInterval.current) {
         clearInterval(songUpdateInterval.current);
       }
+      if (sleepTimerRef.current) {
+        clearInterval(sleepTimerRef.current);
+      }
     };
   }, []);
 
@@ -150,6 +221,30 @@ export default function RadioScreen() {
       }
     };
   }, [isPlaying]);
+
+  // Sleep timer countdown
+  useEffect(() => {
+    if (sleepTimerActive && sleepTimeRemaining > 0) {
+      sleepTimerRef.current = setInterval(() => {
+        setSleepTimeRemaining(prev => {
+          if (prev <= 1) {
+            // Time's up - stop playback
+            stopPlayback();
+            setSleepTimerActive(false);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (sleepTimerRef.current) {
+        clearInterval(sleepTimerRef.current);
+      }
+    };
+  }, [sleepTimerActive]);
 
   const fetchLivePresenter = async () => {
     try {
@@ -213,25 +308,32 @@ export default function RadioScreen() {
     }
   };
 
+  const stopPlayback = async () => {
+    if (sound) {
+      await sound.stopAsync();
+      await sound.unloadAsync();
+      setSound(null);
+      setIsPlaying(false);
+      setCurrentSong({
+        title: 'TruckSimFM',
+        artist: 'Tap Play to Start',
+      });
+      setSpotifyData(null);
+      lastSearchedSong.current = '';
+      setFetchStatus('');
+      setAlbumArtLoaded(false);
+    }
+  };
+
   const togglePlayback = async () => {
-    // Haptic feedback on button press
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     try {
       if (isPlaying && sound) {
-        await sound.stopAsync();
-        await sound.unloadAsync();
-        setSound(null);
-        setIsPlaying(false);
-        setCurrentSong({
-          title: 'TruckSimFM',
-          artist: 'Tap Play to Start',
-        });
-        setSpotifyData(null);
-        lastSearchedSong.current = '';
-        setFetchStatus('');
-        setAlbumArtLoaded(false);
-        // Light haptic on stop
+        await stopPlayback();
+        // Cancel sleep timer when stopping manually
+        setSleepTimerActive(false);
+        setSleepTimeRemaining(0);
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         setIsLoading(true);
@@ -246,14 +348,12 @@ export default function RadioScreen() {
         setSound(newSound);
         setIsPlaying(true);
         setIsLoading(false);
-        // Success haptic on play
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (err) {
       setError('Failed to play stream');
       setIsLoading(false);
       setIsPlaying(false);
-      // Error haptic
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };
@@ -265,7 +365,57 @@ export default function RadioScreen() {
     }
   };
 
-  const albumArtUrl = spotifyData?.album_art_url || PLACEHOLDER_ALBUM;
+  const startSleepTimer = async (minutes: number) => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSleepTimeRemaining(minutes * 60);
+    setSleepTimerActive(true);
+    setShowSleepModal(false);
+  };
+
+  const cancelSleepTimer = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSleepTimerActive(false);
+    setSleepTimeRemaining(0);
+    if (sleepTimerRef.current) {
+      clearInterval(sleepTimerRef.current);
+    }
+  };
+
+  const formatSleepTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleLikeSong = async (track: RecentlyPlayedTrack) => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    // Prevent liking the same song twice in one session
+    if (likedSongs.has(track.documentId)) {
+      Alert.alert('Already Liked', 'You already liked this song!');
+      return;
+    }
+    
+    const result = await likeSong(track.documentId);
+    
+    if (result.success) {
+      // Update the liked songs set
+      setLikedSongs(prev => new Set([...prev, track.documentId]));
+      
+      // Update the like count in the local state
+      setRecentlyPlayed(prev => prev.map(t => 
+        t.documentId === track.documentId 
+          ? { ...t, likes: result.likes || t.likes + 1 }
+          : t
+      ));
+      
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } else {
+      Alert.alert('Error', 'Failed to like song. Please try again.');
+    }
+  };
+
+  const albumArtUrl = spotifyData?.album_art_url;
   const displayTitle = spotifyData?.title || currentSong.title || 'TruckSimFM';
   const displayArtist = spotifyData?.artist || currentSong.artist || 'Live Radio';
   const displayAlbum = spotifyData?.album;
@@ -283,9 +433,25 @@ export default function RadioScreen() {
           style={styles.logo}
           resizeMode="contain"
         />
-        <View style={styles.liveIndicator}>
-          <View style={styles.liveDot} />
-          <Text style={styles.liveText}>LIVE</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.liveIndicator}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>LIVE</Text>
+          </View>
+          
+          {/* Sleep Timer Button */}
+          {isPlaying && (
+            <TouchableOpacity 
+              style={[styles.sleepButton, sleepTimerActive && styles.sleepButtonActive]}
+              onPress={() => sleepTimerActive ? cancelSleepTimer() : setShowSleepModal(true)}
+              data-testid="sleep-timer-button"
+            >
+              <MoonIcon color={sleepTimerActive ? Colors.background : Colors.textMuted} />
+              {sleepTimerActive && (
+                <Text style={styles.sleepTimeText}>{formatSleepTime(sleepTimeRemaining)}</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -320,20 +486,24 @@ export default function RadioScreen() {
       {/* Turntable with Rotation Animation */}
       <View style={styles.turntableContainer}>
         <Animated.View style={[styles.turntable, animatedStyle]}>
-          {!albumArtLoaded && (
+          {/* Show placeholder when no album art or still loading */}
+          {(!albumArtUrl || !albumArtLoaded) && (
             <Image
-              source={{ uri: PLACEHOLDER_ALBUM }}
+              source={PlaceholderAlbum}
               style={[styles.albumArt, styles.placeholderImage]}
-              resizeMode="contain"
+              resizeMode="cover"
             />
           )}
-          <Image
-            source={{ uri: albumArtUrl }}
-            style={[styles.albumArt, !albumArtLoaded && { opacity: 0 }]}
-            resizeMode="cover"
-            onLoad={() => setAlbumArtLoaded(true)}
-            onError={() => setAlbumArtLoaded(true)}
-          />
+          {/* Show Spotify album art when available */}
+          {albumArtUrl && (
+            <Image
+              source={{ uri: albumArtUrl }}
+              style={[styles.albumArt, !albumArtLoaded && { opacity: 0 }]}
+              resizeMode="cover"
+              onLoad={() => setAlbumArtLoaded(true)}
+              onError={() => setAlbumArtLoaded(false)}
+            />
+          )}
           <View style={styles.vinylCenter} />
         </Animated.View>
       </View>
@@ -397,16 +567,17 @@ export default function RadioScreen() {
         <View style={styles.recentlyPlayedSection}>
           <Text style={styles.sectionTitle}>Recently Played</Text>
           {recentlyPlayed.map((track, index) => (
-            <View key={index} style={styles.recentTrack}>
+            <View key={track.documentId || index} style={styles.recentTrack}>
               {track.artwork_url ? (
                 <Image 
                   source={{ uri: track.artwork_url }}
                   style={styles.recentTrackArt}
                 />
               ) : (
-                <View style={styles.recentTrackArtPlaceholder}>
-                  <Text style={styles.recentTrackArtText}>🎵</Text>
-                </View>
+                <Image
+                  source={PlaceholderAlbum}
+                  style={styles.recentTrackArt}
+                />
               )}
               <View style={styles.recentTrackInfo}>
                 <Text style={styles.recentTrackTitle} numberOfLines={1}>
@@ -416,9 +587,23 @@ export default function RadioScreen() {
                   {track.artist}
                 </Text>
               </View>
-              <Text style={styles.recentTrackTime}>
-                {formatPlayedTime(track.played_at)}
-              </Text>
+              <View style={styles.recentTrackRight}>
+                <TouchableOpacity 
+                  style={styles.likeButton}
+                  onPress={() => handleLikeSong(track)}
+                  data-testid={`like-button-${track.documentId}`}
+                >
+                  <Text style={[
+                    styles.likeText,
+                    likedSongs.has(track.documentId) && styles.likedText
+                  ]}>
+                    👍 {track.likes}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={styles.recentTrackTime}>
+                  {formatPlayedTime(track.played_at)}
+                </Text>
+              </View>
             </View>
           ))}
         </View>
@@ -426,6 +611,44 @@ export default function RadioScreen() {
 
       {/* Bottom padding for tab bar */}
       <View style={{ height: 100 }} />
+
+      {/* Sleep Timer Modal */}
+      <Modal
+        visible={showSleepModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSleepModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowSleepModal(false)}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Sleep Timer</Text>
+            <Text style={styles.modalSubtitle}>Stop playback after:</Text>
+            
+            <View style={styles.sleepOptions}>
+              {SLEEP_OPTIONS.map((minutes) => (
+                <TouchableOpacity
+                  key={minutes}
+                  style={styles.sleepOption}
+                  onPress={() => startSleepTimer(minutes)}
+                >
+                  <Text style={styles.sleepOptionText}>{minutes} min</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            <TouchableOpacity
+              style={styles.modalCancel}
+              onPress={() => setShowSleepModal(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </ScrollView>
   );
 }
@@ -442,6 +665,11 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 12,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   logo: {
     width: 160,
@@ -467,6 +695,26 @@ const styles = StyleSheet.create({
     color: Colors.background,
     fontWeight: 'bold',
     fontSize: 12,
+  },
+  sleepButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  sleepButtonActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  sleepTimeText: {
+    color: Colors.background,
+    fontWeight: 'bold',
+    fontSize: 12,
+    marginLeft: 6,
   },
   presenterBanner: {
     backgroundColor: Colors.surface,
@@ -545,7 +793,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   placeholderImage: {
-    opacity: 0.5,
+    opacity: 0.8,
   },
   vinylCenter: {
     position: 'absolute',
@@ -678,17 +926,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: Colors.card,
   },
-  recentTrackArtPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 6,
-    backgroundColor: Colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recentTrackArtText: {
-    fontSize: 20,
-  },
   recentTrackInfo: {
     flex: 1,
     marginLeft: 12,
@@ -704,8 +941,80 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginTop: 2,
   },
-  recentTrackTime: {
-    fontSize: 11,
+  recentTrackRight: {
+    alignItems: 'flex-end',
+  },
+  likeButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: Colors.card,
+    marginBottom: 4,
+  },
+  likeText: {
+    fontSize: 12,
     color: Colors.textMuted,
+  },
+  likedText: {
+    color: Colors.primary,
+  },
+  recentTrackTime: {
+    fontSize: 10,
+    color: Colors.textMuted,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: 24,
+    width: '80%',
+    maxWidth: 320,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  sleepOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  sleepOption: {
+    backgroundColor: Colors.card,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  sleepOptionText: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalCancel: {
+    marginTop: 20,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: Colors.textMuted,
+    fontSize: 16,
   },
 });
