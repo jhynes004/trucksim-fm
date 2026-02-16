@@ -10,7 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import axios from 'axios';
-import { Colors } from '@/constants/colors';
+import { Colors } from '../../constants/colors';
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
