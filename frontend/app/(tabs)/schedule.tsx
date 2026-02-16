@@ -21,6 +21,8 @@ interface ScheduleShow {
   description: string;
   start_time: string;
   end_time: string;
+  permanent: boolean;
+  excluded_dates: string[] | null;
   presenter: {
     username: string;
     bio: string;
