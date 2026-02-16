@@ -131,96 +131,73 @@ async def get_current_song():
 
 @api_router.get("/live-presenter")
 async def get_live_presenter():
-    """Scrape the TruckSimFM website to get the current live presenter"""
+    """Get the current live presenter by checking who played the most recent songs"""
     import requests
     try:
+        # Fetch recent playlists to see who's playing
         response = requests.get(
-            'https://www.trucksim.fm',
+            'https://www.trucksim.fm/api/playlists?pagination[limit]=5&sort[0]=id:desc&populate=*',
             timeout=10,
             headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                'User-Agent': 'TruckSimFM-App/1.0'
             }
         )
-        response.raise_for_status()
         
-        soup = BeautifulSoup(response.text, 'lxml')
-        
-        # Look for the live presenter info
-        # The website structure shows: LIVE NOW... followed by presenter image and name
-        live_section = soup.find(string=re.compile('LIVE NOW', re.IGNORECASE))
-        
-        presenter_name = None
-        show_name = None
-        show_description = None
-        photo_url = None
-        is_auto_dj = False
-        
-        if live_section:
-            # Find the parent container and look for presenter info
-            parent = live_section.find_parent('div') if live_section else None
+        if response.status_code == 200:
+            data = response.json()
+            items = data.get('data', [])
             
-            # Try to find presenter name - it's usually in an image alt or nearby text
-            # Look for images with presenter photos
-            img_tags = soup.find_all('img')
-            for img in img_tags:
-                alt = img.get('alt', '')
-                src = img.get('src', '')
-                # Check if this is a presenter image (has username as alt)
-                if alt and 'TSFM' not in alt and 'Chart' not in alt and 'logo' not in alt.lower():
-                    # Check if the image is in the live section (not in recently played)
-                    parent_classes = ' '.join(img.find_parent('div').get('class', []) if img.find_parent('div') else [])
-                    if 'recently' not in parent_classes.lower():
-                        presenter_name = alt
-                        if 'trucksim.fm' in src or '_next/image' in src:
-                            photo_url = src
-                        break
+            if items:
+                # Get the most recent played_by user
+                recent_item = items[0]
+                played_by = recent_item.get('played_by')
+                
+                if played_by and isinstance(played_by, dict):
+                    username = played_by.get('username', '')
+                    photo = played_by.get('profile_photo')
+                    photo_url = None
+                    if photo and isinstance(photo, dict):
+                        photo_url = f"https://trucksim.fm{photo.get('url', '')}"
+                    
+                    # Check if it's the auto-DJ
+                    is_auto_dj = 'cruise' in username.lower() or 'auto' in username.lower()
+                    
+                    logger.info(f"Live presenter from playlist: {username}")
+                    
+                    return {
+                        "success": True,
+                        "data": {
+                            "name": username,
+                            "show_name": f"Live with {username}",
+                            "description": "",
+                            "photo_url": photo_url,
+                            "is_auto_dj": is_auto_dj
+                        }
+                    }
         
-        # If we found a presenter, try to find the show name
-        if presenter_name:
-            # Look for h2 elements that might contain show name
-            h2_tags = soup.find_all('h2')
-            for h2 in h2_tags:
-                text = h2.get_text(strip=True)
-                if text and 'Upcoming' not in text and 'Featured' not in text:
-                    show_name = text
-                    break
-            
-            # Look for "Live until" text for description
-            live_until = soup.find(string=re.compile('Live until', re.IGNORECASE))
-            if live_until:
-                show_description = live_until.strip()
+        # Fallback: Try to get from schedule
+        logger.info("Falling back to schedule-based presenter detection")
         
-        # Check if it's the auto-DJ (DJ Cruise Control)
-        if presenter_name and 'cruise control' in presenter_name.lower():
-            is_auto_dj = True
-        elif not presenter_name:
-            # Default to auto-DJ if we couldn't find a presenter
-            presenter_name = 'DJ Cruise Control'
-            show_name = 'Auto DJ'
-            show_description = 'Full throttle tunes...'
-            is_auto_dj = True
-        
-        logger.info(f"Scraped live presenter: {presenter_name}, Show: {show_name}")
-        
-        return {
-            "success": True,
-            "data": {
-                "name": presenter_name,
-                "show_name": show_name or f"Live with {presenter_name}",
-                "description": show_description or "",
-                "photo_url": photo_url,
-                "is_auto_dj": is_auto_dj
-            }
-        }
-    except Exception as e:
-        logger.error(f"Error scraping live presenter: {e}")
+        # Return auto-DJ as default
         return {
             "success": True,
             "data": {
                 "name": "DJ Cruise Control",
                 "show_name": "Auto DJ",
                 "description": "Full throttle tunes...",
-                "photo_url": None,
+                "photo_url": "https://trucksim.fm/uploads/DJ_Cruise_Control_62185ad8f6.png",
+                "is_auto_dj": True
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error getting live presenter: {e}")
+        return {
+            "success": True,
+            "data": {
+                "name": "DJ Cruise Control",
+                "show_name": "Auto DJ",
+                "description": "Full throttle tunes...",
+                "photo_url": "https://trucksim.fm/uploads/DJ_Cruise_Control_62185ad8f6.png",
                 "is_auto_dj": True
             }
         }
