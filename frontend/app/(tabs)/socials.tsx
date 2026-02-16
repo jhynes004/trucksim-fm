@@ -172,8 +172,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 16,
   },
-  socialIcon: {
-    fontSize: 28,
+  socialLogo: {
+    width: 36,
+    height: 36,
   },
   socialInfo: {
     flex: 1,
