@@ -68,6 +68,7 @@ export default function ScheduleScreen() {
           start_time: item.start_time,
           end_time: item.end_time,
           permanent: item.permanent || false,
+          perm_end: item.perm_end || null,
           excluded_dates: item.excluded_dates || null,
           presenter: item.users_permissions_user ? {
             username: item.users_permissions_user.username,
