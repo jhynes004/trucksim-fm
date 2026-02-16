@@ -20,16 +20,21 @@ class SpotifyService:
             if datetime.now() < self.token_expires_at:
                 return self.access_token
         
-        # Get new token
+        # Get new token using Basic Auth
         auth_url = 'https://accounts.spotify.com/api/token'
         auth_data = {
-            'grant_type': 'client_credentials',
-            'client_id': self.client_id,
-            'client_secret': self.client_secret
+            'grant_type': 'client_credentials'
         }
         
         try:
-            response = requests.post(auth_url, data=auth_data, timeout=10)
+            # Use Basic Auth with client_id and client_secret
+            from requests.auth import HTTPBasicAuth
+            response = requests.post(
+                auth_url, 
+                data=auth_data, 
+                auth=HTTPBasicAuth(self.client_id, self.client_secret),
+                timeout=10
+            )
             response.raise_for_status()
             token_data = response.json()
             
@@ -43,6 +48,8 @@ class SpotifyService:
             
         except Exception as e:
             logger.error(f'Failed to get Spotify access token: {e}')
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f'Response content: {e.response.text}')
             raise
     
     def search_track(self, artist: str, title: str) -> Optional[Dict[str, Any]]:
