@@ -121,11 +121,17 @@ export default function RadioScreen() {
       setFetchStatus('Fetching song...');
       const song = await getCurrentSong();
       
-      setFetchStatus(`Got: ${song.artist} - ${song.title}`);
+      // Show what we got
+      const gotMessage = `Got: "${song.artist || 'NO ARTIST'}" - "${song.title || 'NO TITLE'}"`;
+      setFetchStatus(gotMessage);
       setCurrentSong(song);
+      
+      // Wait 2 seconds so user can see what was fetched
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       if (song.artist && song.title && 
           song.artist !== 'Unknown Artist' && 
+          song.artist !== 'Live Radio' &&
           song.title !== 'TruckSimFM') {
         const songKey = `${song.artist.toLowerCase()}-${song.title.toLowerCase()}`;
         
@@ -147,12 +153,12 @@ export default function RadioScreen() {
           setTimeout(() => setFetchStatus(''), 3000);
         }
       } else {
-        setFetchStatus('Waiting for song...');
-        setTimeout(() => setFetchStatus(''), 3000);
+        setFetchStatus(`Invalid: artist="${song.artist}" title="${song.title}"`);
+        setTimeout(() => setFetchStatus(''), 5000);
       }
     } catch (error) {
-      setFetchStatus('Error fetching data');
-      setTimeout(() => setFetchStatus(''), 3000);
+      setFetchStatus(`Error: ${error.message || 'Unknown error'}`);
+      setTimeout(() => setFetchStatus(''), 5000);
     }
   };
 
