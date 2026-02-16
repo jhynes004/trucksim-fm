@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { Colors } from '@/constants/colors';
+import { Colors } from '../../constants/colors';
 
 const STATS_URL = 'https://radiostats.info';
 
