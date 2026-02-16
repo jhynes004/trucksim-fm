@@ -9,7 +9,6 @@ import {
   Dimensions,
 } from 'react-native';
 import { Audio } from 'expo-av';
-import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -27,13 +26,26 @@ const TURNTABLE_SIZE = width * 0.7;
 const STREAM_URL = 'https://radio.trucksim.fm:8000/radio.mp3';
 const LOGO_URL = 'https://trucksim.fm/uploads/TSFM_25_IMG_57adbe1a8b.png';
 
+// Simple SVG Icons as components
+const PlayIcon = () => (
+  <View style={styles.icon}>
+    <View style={styles.playTriangle} />
+  </View>
+);
+
+const StopIcon = () => (
+  <View style={styles.icon}>
+    <View style={styles.stopSquare} />
+  </View>
+);
+
 export default function RadioScreen() {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentSong, setCurrentSong] = useState<CurrentSong>({
     title: 'TruckSimFM',
-    artist: 'Loading...',
+    artist: 'Tap Play to Start',
   });
   const [spotifyData, setSpotifyData] = useState<SpotifyTrack | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -108,33 +120,58 @@ export default function RadioScreen() {
   }, [isPlaying]);
 
   const updateCurrentSong = async () => {
-    const song = await getCurrentSong();
-    setCurrentSong(song);
+    try {
+      console.log('Fetching current song...');
+      const song = await getCurrentSong();
+      console.log('Current song:', song);
+      setCurrentSong(song);
 
-    // If we have artist and title, search Spotify
-    if (song.artist && song.title) {
-      const songKey = `${song.artist}-${song.title}`;
-      // Only search if it's a different song
-      if (songKey !== lastSearchedSong.current) {
-        lastSearchedSong.current = songKey;
-        const spotifyResult = await searchSpotifyTrack(song.artist, song.title);
-        if (spotifyResult && spotifyResult.album_art_url) {
-          setSpotifyData(spotifyResult);
+      // If we have artist and title, search Spotify
+      if (song.artist && song.title) {
+        const songKey = `${song.artist}-${song.title}`;
+        console.log('Song key:', songKey, 'Last searched:', lastSearchedSong.current);
+        
+        // Only search if it's a different song
+        if (songKey !== lastSearchedSong.current) {
+          lastSearchedSong.current = songKey;
+          console.log('Searching Spotify for:', song.artist, '-', song.title);
+          
+          const spotifyResult = await searchSpotifyTrack(song.artist, song.title);
+          console.log('Spotify result:', spotifyResult);
+          
+          if (spotifyResult && spotifyResult.album_art_url) {
+            console.log('Setting Spotify data with album art:', spotifyResult.album_art_url);
+            setSpotifyData(spotifyResult);
+          } else {
+            console.log('No album art found, keeping current data');
+          }
         }
+      } else {
+        console.log('Missing artist or title:', song);
       }
+    } catch (error) {
+      console.error('Error updating current song:', error);
     }
   };
 
   const togglePlayback = async () => {
     try {
       if (isPlaying && sound) {
-        // Stop
+        // Stop completely
+        console.log('Stopping playback...');
         await sound.stopAsync();
         await sound.unloadAsync();
         setSound(null);
         setIsPlaying(false);
+        setCurrentSong({
+          title: 'TruckSimFM',
+          artist: 'Tap Play to Start',
+        });
+        setSpotifyData(null);
+        lastSearchedSong.current = '';
       } else {
         // Play
+        console.log('Starting playback...');
         setIsLoading(true);
         setError(null);
 
@@ -147,6 +184,7 @@ export default function RadioScreen() {
         setSound(newSound);
         setIsPlaying(true);
         setIsLoading(false);
+        console.log('Playback started');
       }
     } catch (err) {
       console.error('Playback error:', err);
@@ -191,6 +229,7 @@ export default function RadioScreen() {
             source={{ uri: albumArtUrl }}
             style={styles.albumArt}
             resizeMode="cover"
+            onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
           />
           {/* Vinyl effect */}
           <View style={styles.vinylCenter} />
@@ -215,12 +254,11 @@ export default function RadioScreen() {
       {/* Error Message */}
       {error && (
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={20} color={Colors.error} />
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorText}>⚠️ {error}</Text>
         </View>
       )}
 
-      {/* Play/Pause Button */}
+      {/* Play/Stop Button */}
       <TouchableOpacity
         style={styles.playButton}
         onPress={togglePlayback}
@@ -228,12 +266,10 @@ export default function RadioScreen() {
       >
         {isLoading ? (
           <ActivityIndicator size="large" color={Colors.text} />
+        ) : isPlaying ? (
+          <StopIcon />
         ) : (
-          <Ionicons
-            name={isPlaying ? 'pause' : 'play'}
-            size={48}
-            color={Colors.text}
-          />
+          <PlayIcon />
         )}
       </TouchableOpacity>
 
@@ -353,7 +389,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: Colors.error,
-    marginLeft: 8,
     fontSize: 14,
   },
   playButton: {
@@ -374,5 +409,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     fontWeight: '600',
+  },
+  // Icon styles
+  icon: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playTriangle: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 24,
+    borderRightWidth: 0,
+    borderBottomWidth: 15,
+    borderTopWidth: 15,
+    borderLeftColor: Colors.text,
+    borderRightColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderTopColor: 'transparent',
+    marginLeft: 6,
+  },
+  stopSquare: {
+    width: 28,
+    height: 28,
+    backgroundColor: Colors.text,
+    borderRadius: 4,
   },
 });
