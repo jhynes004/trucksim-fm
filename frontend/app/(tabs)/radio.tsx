@@ -101,10 +101,10 @@ export default function RadioScreen() {
     if (isPlaying) {
       // Update immediately
       updateCurrentSong();
-      // Then update every 15 seconds
+      // Then update every 10 seconds
       songUpdateInterval.current = setInterval(() => {
         updateCurrentSong();
-      }, 15000);
+      }, 10000);
     } else {
       if (songUpdateInterval.current) {
         clearInterval(songUpdateInterval.current);
@@ -121,36 +121,48 @@ export default function RadioScreen() {
 
   const updateCurrentSong = async () => {
     try {
-      console.log('Fetching current song...');
+      console.log('=== [Radio] Fetching current song... ===');
       const song = await getCurrentSong();
-      console.log('Current song:', song);
+      console.log('[Radio] Got current song:', song);
+      
+      // Always update the current song display
       setCurrentSong(song);
 
       // If we have artist and title, search Spotify
-      if (song.artist && song.title) {
-        const songKey = `${song.artist}-${song.title}`;
-        console.log('Song key:', songKey, 'Last searched:', lastSearchedSong.current);
+      if (song.artist && song.title && 
+          song.artist !== 'Unknown Artist' && 
+          song.title !== 'TruckSimFM') {
+        const songKey = `${song.artist.toLowerCase()}-${song.title.toLowerCase()}`;
+        console.log('[Radio] Song key:', songKey);
+        console.log('[Radio] Last searched:', lastSearchedSong.current);
         
         // Only search if it's a different song
         if (songKey !== lastSearchedSong.current) {
           lastSearchedSong.current = songKey;
-          console.log('Searching Spotify for:', song.artist, '-', song.title);
+          console.log('[Radio] NEW SONG - Searching Spotify for:', song.artist, '-', song.title);
           
           const spotifyResult = await searchSpotifyTrack(song.artist, song.title);
-          console.log('Spotify result:', spotifyResult);
+          console.log('[Radio] Spotify result received:', spotifyResult);
           
           if (spotifyResult && spotifyResult.album_art_url) {
-            console.log('Setting Spotify data with album art:', spotifyResult.album_art_url);
+            console.log('[Radio] ✅ Setting Spotify data with album art:', spotifyResult.album_art_url);
             setSpotifyData(spotifyResult);
           } else {
-            console.log('No album art found, keeping current data');
+            console.log('[Radio] ❌ No album art found in Spotify result');
+            // Clear spotify data if no results
+            setSpotifyData(null);
           }
+        } else {
+          console.log('[Radio] Same song, skipping Spotify search');
         }
       } else {
-        console.log('Missing artist or title:', song);
+        console.log('[Radio] Missing artist or title, skipping Spotify:', {
+          artist: song.artist,
+          title: song.title,
+        });
       }
     } catch (error) {
-      console.error('Error updating current song:', error);
+      console.error('[Radio] Error updating current song:', error);
     }
   };
 
@@ -158,7 +170,7 @@ export default function RadioScreen() {
     try {
       if (isPlaying && sound) {
         // Stop completely
-        console.log('Stopping playback...');
+        console.log('[Radio] Stopping playback...');
         await sound.stopAsync();
         await sound.unloadAsync();
         setSound(null);
@@ -171,7 +183,7 @@ export default function RadioScreen() {
         lastSearchedSong.current = '';
       } else {
         // Play
-        console.log('Starting playback...');
+        console.log('[Radio] Starting playback...');
         setIsLoading(true);
         setError(null);
 
@@ -184,10 +196,10 @@ export default function RadioScreen() {
         setSound(newSound);
         setIsPlaying(true);
         setIsLoading(false);
-        console.log('Playback started');
+        console.log('[Radio] ✅ Playback started successfully');
       }
     } catch (err) {
-      console.error('Playback error:', err);
+      console.error('[Radio] Playback error:', err);
       setError('Failed to play stream');
       setIsLoading(false);
       setIsPlaying(false);
@@ -196,7 +208,7 @@ export default function RadioScreen() {
 
   const onPlaybackStatusUpdate = (status) => {
     if (status.error) {
-      console.error('Playback status error:', status.error);
+      console.error('[Radio] Playback status error:', status.error);
       setError('Stream playback error');
       setIsPlaying(false);
     }
@@ -204,6 +216,11 @@ export default function RadioScreen() {
 
   // Determine which image to show on turntable
   const albumArtUrl = spotifyData?.album_art_url || LOGO_URL;
+  
+  // Determine what to display
+  const displayTitle = spotifyData?.title || currentSong.title || 'TruckSimFM';
+  const displayArtist = spotifyData?.artist || currentSong.artist || 'Live Radio';
+  const displayAlbum = spotifyData?.album;
 
   return (
     <View style={styles.container}>
@@ -229,7 +246,8 @@ export default function RadioScreen() {
             source={{ uri: albumArtUrl }}
             style={styles.albumArt}
             resizeMode="cover"
-            onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+            onError={(e) => console.log('[Radio] Image load error:', e.nativeEvent.error)}
+            onLoad={() => console.log('[Radio] ✅ Image loaded successfully:', albumArtUrl)}
           />
           {/* Vinyl effect */}
           <View style={styles.vinylCenter} />
@@ -238,15 +256,15 @@ export default function RadioScreen() {
 
       {/* Song Info */}
       <View style={styles.songInfo}>
-        <Text style={styles.songTitle} numberOfLines={1}>
-          {spotifyData?.title || currentSong.title || 'TruckSimFM'}
+        <Text style={styles.songTitle} numberOfLines={2}>
+          {displayTitle}
         </Text>
         <Text style={styles.songArtist} numberOfLines={1}>
-          {spotifyData?.artist || currentSong.artist || 'Live Radio'}
+          {displayArtist}
         </Text>
-        {spotifyData?.album && (
+        {displayAlbum && (
           <Text style={styles.songAlbum} numberOfLines={1}>
-            {spotifyData.album}
+            {displayAlbum}
           </Text>
         )}
       </View>
@@ -281,6 +299,13 @@ export default function RadioScreen() {
           ? 'Now Playing'
           : 'Tap to Play'}
       </Text>
+      
+      {/* Debug info - remove in production */}
+      {__DEV__ && (
+        <Text style={styles.debugText}>
+          Backend: {process.env.EXPO_PUBLIC_BACKEND_URL || 'NOT SET'}
+        </Text>
+      )}
     </View>
   );
 }
@@ -409,6 +434,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     fontWeight: '600',
+  },
+  debugText: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 8,
   },
   // Icon styles
   icon: {

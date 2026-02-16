@@ -23,16 +23,33 @@ export const searchSpotifyTrack = async (
   title: string
 ): Promise<SpotifyTrack | null> => {
   try {
+    console.log('[SpotifyService] Searching with backend URL:', BACKEND_URL);
+    console.log('[SpotifyService] Artist:', artist, 'Title:', title);
+    
     const response = await axios.post(
       `${BACKEND_URL}/api/spotify/search`,
       { artist, title },
       { timeout: 10000 }
     );
     
-    console.log('Spotify search result:', response.data);
-    return response.data;
+    console.log('[SpotifyService] Spotify search result:', response.data);
+    
+    // Check if we got valid data
+    if (response.data && response.data.album_art_url) {
+      return response.data;
+    }
+    
+    console.log('[SpotifyService] No album art in response');
+    return null;
   } catch (error) {
-    console.error('Failed to search Spotify:', error);
+    console.error('[SpotifyService] Failed to search Spotify:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('[SpotifyService] Axios error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+    }
     return null;
   }
 };
