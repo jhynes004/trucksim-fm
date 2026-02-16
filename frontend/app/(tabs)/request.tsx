@@ -283,10 +283,28 @@ export default function RequestScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Song Request</Text>
+          <Text style={styles.title}>Request</Text>
           <Text style={styles.subtitle}>
-            Send your song request to TruckSimFM
+            Send a request to TruckSimFM
           </Text>
+        </View>
+
+        {/* Request Type Selector */}
+        <View style={styles.typeSelectorContainer}>
+          <Text style={styles.label}>Request Type</Text>
+          <TouchableOpacity
+            style={styles.typeSelector}
+            onPress={() => setShowTypeSelector(true)}
+          >
+            <View style={styles.typeSelectorContent}>
+              <Text style={styles.typeIcon}>{getSelectedType().icon}</Text>
+              <View style={styles.typeSelectorText}>
+                <Text style={styles.typeSelectorLabel}>{getSelectedType().label}</Text>
+                <Text style={styles.typeSelectorDescription}>{getSelectedType().description}</Text>
+              </View>
+            </View>
+            <Text style={styles.typeSelectorArrow}>▼</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Info Box */}
@@ -298,63 +316,7 @@ export default function RequestScreen() {
 
         {/* Form */}
         <View style={styles.form}>
-          {/* Artist Name */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Artist Name <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter artist name"
-              placeholderTextColor={Colors.textMuted}
-              value={artistName}
-              onChangeText={setArtistName}
-              autoCapitalize="words"
-            />
-          </View>
-
-          {/* Song Title */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Song Title <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter song title"
-              placeholderTextColor={Colors.textMuted}
-              value={songTitle}
-              onChangeText={setSongTitle}
-              autoCapitalize="words"
-            />
-          </View>
-
-          {/* Your Name */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Your Name (Optional)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your name"
-              placeholderTextColor={Colors.textMuted}
-              value={yourName}
-              onChangeText={setYourName}
-              autoCapitalize="words"
-            />
-          </View>
-
-          {/* Message */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Message (Optional)</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Add a message for the presenter..."
-              placeholderTextColor={Colors.textMuted}
-              value={message}
-              onChangeText={setMessage}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-          </View>
+          {renderFormFields()}
 
           {/* Buttons */}
           <View style={styles.buttonContainer}>
@@ -386,6 +348,53 @@ export default function RequestScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Type Selector Modal */}
+      <Modal
+        visible={showTypeSelector}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowTypeSelector(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowTypeSelector(false)}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Request Type</Text>
+              <TouchableOpacity onPress={() => setShowTypeSelector(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {REQUEST_TYPES.map((type) => (
+              <TouchableOpacity
+                key={type.value}
+                style={[
+                  styles.typeOption,
+                  requestType === type.value && styles.typeOptionActive
+                ]}
+                onPress={() => {
+                  setRequestType(type.value);
+                  setShowTypeSelector(false);
+                  clearForm(); // Clear form when switching types
+                }}
+              >
+                <Text style={styles.typeOptionIcon}>{type.icon}</Text>
+                <View style={styles.typeOptionText}>
+                  <Text style={styles.typeOptionLabel}>{type.label}</Text>
+                  <Text style={styles.typeOptionDescription}>{type.description}</Text>
+                </View>
+                {requestType === type.value && (
+                  <Text style={styles.typeOptionCheck}>✓</Text>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
