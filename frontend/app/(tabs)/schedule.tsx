@@ -358,7 +358,6 @@ const styles = StyleSheet.create({
   },
   scheduleListContent: {
     padding: 16,
-    gap: 16,
   },
   showCard: {
     backgroundColor: Colors.surface,
