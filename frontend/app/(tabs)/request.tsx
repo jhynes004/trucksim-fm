@@ -133,6 +133,144 @@ export default function RequestScreen() {
     setMessage('');
   };
 
+  const getSelectedType = () => {
+    return REQUEST_TYPES.find(t => t.value === requestType) || REQUEST_TYPES[0];
+  };
+
+  const renderFormFields = () => {
+    switch (requestType) {
+      case 'song':
+        return (
+          <>
+            {/* Artist Name */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                Artist Name <Text style={styles.required}>*</Text>
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter artist name"
+                placeholderTextColor={Colors.textMuted}
+                value={artistName}
+                onChangeText={setArtistName}
+                autoCapitalize="words"
+              />
+            </View>
+
+            {/* Song Title */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                Song Title <Text style={styles.required}>*</Text>
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter song title"
+                placeholderTextColor={Colors.textMuted}
+                value={songTitle}
+                onChangeText={setSongTitle}
+                autoCapitalize="words"
+              />
+            </View>
+
+            {/* Your Name */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Your Name (Optional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your name"
+                placeholderTextColor={Colors.textMuted}
+                value={yourName}
+                onChangeText={setYourName}
+                autoCapitalize="words"
+              />
+            </View>
+
+            {/* Message */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Message (Optional)</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Add a message for the presenter..."
+                placeholderTextColor={Colors.textMuted}
+                value={message}
+                onChangeText={setMessage}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+          </>
+        );
+
+      case 'shoutout':
+        return (
+          <>
+            {/* Your Name */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                Your Name <Text style={styles.required}>*</Text>
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your name"
+                placeholderTextColor={Colors.textMuted}
+                value={yourName}
+                onChangeText={setYourName}
+                autoCapitalize="words"
+              />
+            </View>
+
+            {/* Message */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                Shout-out Message <Text style={styles.required}>*</Text>
+              </Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Enter your shout-out message..."
+                placeholderTextColor={Colors.textMuted}
+                value={message}
+                onChangeText={setMessage}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+          </>
+        );
+
+      case 'competition':
+        return (
+          <>
+            {/* Message */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                Your Answer <Text style={styles.required}>*</Text>
+              </Text>
+              <View style={styles.competitionInputContainer}>
+                <View style={styles.winPrefix}>
+                  <Text style={styles.winPrefixText}>WIN</Text>
+                </View>
+                <TextInput
+                  style={[styles.input, styles.textArea, styles.competitionInput]}
+                  placeholder="Enter your competition answer..."
+                  placeholderTextColor={Colors.textMuted}
+                  value={message}
+                  onChangeText={setMessage}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+              <Text style={styles.helperText}>
+                Your message will be automatically prefixed with "WIN"
+              </Text>
+            </View>
+          </>
+        );
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
