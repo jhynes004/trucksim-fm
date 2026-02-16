@@ -1,57 +1,101 @@
-# TruckSimFM Radio App - Product Requirements Document
+# TruckSim.FM Mobile App - PRD
 
 ## Original Problem Statement
-Build a mobile application for the online radio station `trucksim.fm`.
+Build a mobile application for the online radio station `trucksim.fm` with:
+- Live audio streaming with background playback and notification controls (like Spotify)
+- Now Playing information from the radio stream
+- Live presenter/DJ display
+- Spotify album art integration
+- Turntable UI with spinning animation
+- Song requests via WhatsApp
+- Schedule display
+- Recently played songs
+- Sleep timer
+- Social media links
 
-## Architecture
-- **Frontend**: Expo (React Native) with TypeScript
-- **Backend**: FastAPI (Python) as BFF proxy
-- **Database**: None (uses external APIs)
-- **Key Libraries**: expo-av, expo-router, react-native-reanimated, react-native-webview, expo-haptics
+## User Preferences
+- Language: English
+- Presenter detection: Use schedule API (user confirmed working)
+- Icons: Custom icons provided by user (keep as-is)
+- Haptic feedback: Working (no changes needed)
+
+## Tech Stack
+- **Frontend**: React Native with Expo SDK 54, expo-router
+- **Backend**: FastAPI (Python)
+- **Audio**: react-native-track-player (for background playback + notification controls)
+- **Building**: EAS (Expo Application Services)
 
 ## What's Been Implemented
+- [x] Core audio streaming
+- [x] Now Playing data from radio stream
+- [x] Spotify album art integration
+- [x] Turntable UI with rotation animation
+- [x] Live presenter detection (from schedule API)
+- [x] Recently played songs list
+- [x] Sleep timer functionality
+- [x] Social media tab with links
+- [x] Song request UI (WhatsApp integration)
+- [x] Schedule display
+- [x] Custom icons (moon, socials, tab icons)
+- [x] Haptic feedback on buttons
+- [x] SafeAreaView for device notch/navigation handling
 
-### Core Features
-1. **Radio Tab**: Live streaming with spinning turntable, Spotify album art integration, live presenter display
-2. **Request Tab**: Dropdown for Song Request, Shout-out, Competition Entry with WhatsApp integration
-3. **Schedule Tab**: Day-based filtering with proper UTC handling
-4. **Stats Tab**: WebView embedding radiostats.info
-5. **Socials Tab**: Links to WhatsApp, Discord, Facebook, X with official logos
-6. **Branding**: Custom app icon and splash screen
+## Latest Update (December 2025)
+### Background Audio Implementation Complete
+Fixed background audio playback with notification/lock-screen controls:
 
-### Additional Features
-- **Sleep Timer**: Moon icon with countdown, auto-stops playback
-- **Recently Played**: Shows last 5 songs with artwork and like counts
-- **Live Presenter**: Schedule-based detection with priority sorting
-- **Custom Tab Icons**: Radio, Mail, Calendar, Chart, Person silhouette
+1. **Added `expo-build-properties` plugin** to `app.json`:
+   - iOS: `usesAudioBackgroundMode: true`
+   - Android: `usesCleartextTraffic: true`
 
-### Custom Assets
-- `/app/frontend/assets/images/placeholder-album.png` - Album art placeholder
-- `/app/frontend/assets/images/moon-icon.png` - Sleep timer icon
-- `/app/frontend/assets/images/socials-icon.png` - Socials tab icon
+2. **Created dedicated `playbackService.js`** for background event handling:
+   - Handles RemotePlay, RemotePause, RemoteStop events
+   - Handles audio interruptions (RemoteDuck)
+   - Handles playback errors and state changes
+
+3. **Updated `trackPlayerService.ts`** with proper Android config:
+   - `appKilledPlaybackBehavior: ContinuePlayback`
+   - `stoppingAppPausesPlayback: false`
+   - Notification capabilities: Play, Pause, Stop
+
+4. **Updated `index.js`** entry point:
+   - Registers playback service before React renders
+
+## Next Steps for User
+**CRITICAL: A new APK build is required to test background audio.**
+
+To test the background audio fix:
+1. Run `eas build --profile development --platform android`
+2. Install the new APK on your device
+3. Play the stream and:
+   - Lock your phone - music should continue
+   - Check notification shade - should show TruckSimFM with Play/Pause controls
+   - Swipe away the app - music should continue
+   - Use notification controls to pause/play
+
+## Files Modified This Session
+- `/app/frontend/app.json` - Added expo-build-properties plugin
+- `/app/frontend/services/trackPlayerService.ts` - Enhanced Android config
+- `/app/frontend/services/playbackService.js` - New dedicated background service
+- `/app/frontend/index.js` - Updated service registration
+- `/app/frontend/package.json` - Added expo-build-properties dependency
 
 ## API Endpoints
-- `GET /api/current-song` - Current playing song
-- `GET /api/schedule` - TruckSimFM schedule data
-- `GET /api/recently-played?limit=5` - Recently played tracks with likes
-- `GET /api/live-presenter` - Current live presenter
-- `POST /api/spotify/search` - Spotify track metadata
+- `GET /api/current_song` - Current song info
+- `GET /api/schedule` - Schedule data
+- `GET /api/spotify_search` - Album art lookup
+- `GET /api/recently_played` - Recently played tracks
 
-## File Summary
-- `/app/frontend/app/(tabs)/radio.tsx` - Main radio player with turntable
-- `/app/frontend/app/(tabs)/request.tsx` - Song request form
-- `/app/frontend/app/(tabs)/schedule.tsx` - Show schedule by day
-- `/app/frontend/app/(tabs)/stats.tsx` - Stats WebView
-- `/app/frontend/app/(tabs)/socials.tsx` - Social media links
-- `/app/frontend/app/(tabs)/_layout.tsx` - Tab navigation with custom icons
-- `/app/frontend/services/presenterService.ts` - Live presenter detection
-- `/app/frontend/services/recentlyPlayedService.ts` - Recently played tracks
-- `/app/backend/server.py` - FastAPI backend
+## External Services
+- TruckSim.FM Radio Stream: `https://radio.trucksim.fm:8000/radio.mp3`
+- TruckSim.FM API: `https://radio.trucksim.fm:8000/currentsong?sid=1`
+- Spotify Web API (for album art)
 
-## Deployment
-- Backend: Deployed via Emergent
-- Frontend: Build with EAS CLI locally
-- See `/app/DEPLOYMENT.md` for instructions
+## Known Limitations
+- "Liking" songs not possible (API returns 403 Forbidden) - display-only mode implemented
+- X/Twitter link: Fix implemented, pending user verification in new APK build
 
-## App Ready Status: ✅ COMPLETE
-All requested features implemented and tested.
+## Backlog
+- [ ] User verification of background audio in APK build
+- [ ] User verification of X/Twitter link in APK build
+- [ ] App store deployment guidance (when ready)
