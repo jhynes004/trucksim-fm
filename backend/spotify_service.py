@@ -61,8 +61,61 @@ class SpotifyService:
                 logger.error(f'Response content: {e.response.text}')
             raise
     
+    def _clean_search_term(self, term: str) -> str:
+        """Clean search term by removing common extras and special characters"""
+        import re
+        # Remove content in parentheses or brackets (e.g., "(feat. ...)", "[Remix]")
+        term = re.sub(r'\([^)]*\)', '', term)
+        term = re.sub(r'\[[^\]]*\]', '', term)
+        # Remove common suffixes
+        term = re.sub(r'\s*-\s*(Official|Lyric|Music)?\s*(Video|Audio|Mix|Remix|Version).*$', '', term, flags=re.IGNORECASE)
+        # Remove extra whitespace
+        term = ' '.join(term.split())
+        return term.strip()
+    
+    def _search_with_query(self, token: str, query: str, limit: int = 1) -> Optional[Dict[str, Any]]:
+        """Perform a single Spotify search with the given query"""
+        search_url = 'https://api.spotify.com/v1/search'
+        headers = {'Authorization': f'Bearer {token}'}
+        params = {
+            'q': query,
+            'type': 'track',
+            'limit': limit
+        }
+        
+        try:
+            response = requests.get(search_url, headers=headers, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            tracks = data.get('tracks', {}).get('items', [])
+            if tracks:
+                track = tracks[0]
+                album = track.get('album', {})
+                images = album.get('images', [])
+                
+                # Get the highest quality image (first in array)
+                album_art_url = images[0]['url'] if images else None
+                
+                return {
+                    'title': track.get('name'),
+                    'artist': ', '.join([a['name'] for a in track.get('artists', [])]),
+                    'album': album.get('name'),
+                    'album_art_url': album_art_url,
+                    'album_art_small': images[-1]['url'] if images else None,
+                    'album_art_medium': images[1]['url'] if len(images) > 1 else album_art_url,
+                    'release_date': album.get('release_date'),
+                    'spotify_url': track.get('external_urls', {}).get('spotify'),
+                    'duration_ms': track.get('duration_ms'),
+                    'preview_url': track.get('preview_url')
+                }
+            return None
+        except Exception as e:
+            logger.error(f'Error in Spotify search query "{query}": {e}')
+            return None
+    
     def search_track(self, artist: str, title: str) -> Optional[Dict[str, Any]]:
-        """Search for a track on Spotify and return metadata including album art"""
+        """Search for a track on Spotify with multiple fallback strategies"""
         if not artist or not title:
             logger.warning('Artist or title is missing')
             return None
@@ -70,47 +123,53 @@ class SpotifyService:
         try:
             token = self._get_access_token()
             
-            # Create search query
-            query = f'artist:{artist} track:{title}'
-            search_url = 'https://api.spotify.com/v1/search'
-            headers = {'Authorization': f'Bearer {token}'}
-            params = {
-                'q': query,
-                'type': 'track',
-                'limit': 1
-            }
+            # Clean the search terms
+            clean_artist = self._clean_search_term(artist)
+            clean_title = self._clean_search_term(title)
             
-            response = requests.get(search_url, headers=headers, params=params, timeout=10)
-            response.raise_for_status()
-            data = response.json()
+            # Strategy 1: Strict search with artist and track fields
+            logger.info(f'Trying strict search: artist:"{clean_artist}" track:"{clean_title}"')
+            query = f'artist:"{clean_artist}" track:"{clean_title}"'
+            result = self._search_with_query(token, query)
+            if result:
+                logger.info(f'✓ Found match with strict search for: {artist} - {title}')
+                return result
             
-            tracks = data.get('tracks', {}).get('items', [])
-            if not tracks:
-                logger.info(f'No Spotify results found for: {artist} - {title}')
-                return None
+            # Strategy 2: Less strict with unquoted terms
+            logger.info(f'Trying unquoted search: artist:{clean_artist} track:{clean_title}')
+            query = f'artist:{clean_artist} track:{clean_title}'
+            result = self._search_with_query(token, query)
+            if result:
+                logger.info(f'✓ Found match with unquoted search for: {artist} - {title}')
+                return result
             
-            track = tracks[0]
-            album = track.get('album', {})
-            images = album.get('images', [])
+            # Strategy 3: General search with both terms (no field specifiers)
+            logger.info(f'Trying general search: {clean_artist} {clean_title}')
+            query = f'{clean_artist} {clean_title}'
+            result = self._search_with_query(token, query, limit=5)
+            if result:
+                logger.info(f'✓ Found match with general search for: {artist} - {title}')
+                return result
             
-            # Get the highest quality image (first in array)
-            album_art_url = images[0]['url'] if images else None
+            # Strategy 4: Search with original (uncleaned) terms
+            if clean_artist != artist or clean_title != title:
+                logger.info(f'Trying original terms: {artist} {title}')
+                query = f'{artist} {title}'
+                result = self._search_with_query(token, query, limit=5)
+                if result:
+                    logger.info(f'✓ Found match with original terms for: {artist} - {title}')
+                    return result
             
-            result = {
-                'title': track.get('name'),
-                'artist': ', '.join([a['name'] for a in track.get('artists', [])]),
-                'album': album.get('name'),
-                'album_art_url': album_art_url,
-                'album_art_small': images[-1]['url'] if images else None,  # Smallest image
-                'album_art_medium': images[1]['url'] if len(images) > 1 else album_art_url,
-                'release_date': album.get('release_date'),
-                'spotify_url': track.get('external_urls', {}).get('spotify'),
-                'duration_ms': track.get('duration_ms'),
-                'preview_url': track.get('preview_url')
-            }
+            # Strategy 5: Try just the track title (for cases where artist might be wrong/misspelled)
+            logger.info(f'Trying title-only search: {clean_title}')
+            query = f'track:"{clean_title}"'
+            result = self._search_with_query(token, query, limit=5)
+            if result:
+                logger.info(f'✓ Found match with title-only search for: {artist} - {title}')
+                return result
             
-            logger.info(f'Found Spotify match for: {artist} - {title}')
-            return result
+            logger.warning(f'✗ No Spotify results found after all strategies for: {artist} - {title}')
+            return None
             
         except Exception as e:
             logger.error(f'Error searching Spotify: {e}')
