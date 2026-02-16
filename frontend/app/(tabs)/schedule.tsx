@@ -404,13 +404,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 8,
-    gap: 12,
   },
   presenterPhoto: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: Colors.card,
+    marginRight: 12,
   },
   presenterDetails: {
     flex: 1,
