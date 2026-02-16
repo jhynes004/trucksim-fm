@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,9 +6,10 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 import uuid
 from datetime import datetime
+from spotify_service import spotify_service
 
 
 ROOT_DIR = Path(__file__).parent
@@ -35,6 +36,22 @@ class StatusCheck(BaseModel):
 class StatusCheckCreate(BaseModel):
     client_name: str
 
+class SpotifySearchRequest(BaseModel):
+    artist: str
+    title: str
+
+class SpotifyTrackResponse(BaseModel):
+    title: Optional[str] = None
+    artist: Optional[str] = None
+    album: Optional[str] = None
+    album_art_url: Optional[str] = None
+    album_art_small: Optional[str] = None
+    album_art_medium: Optional[str] = None
+    release_date: Optional[str] = None
+    spotify_url: Optional[str] = None
+    duration_ms: Optional[int] = None
+    preview_url: Optional[str] = None
+
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
 async def root():
@@ -51,6 +68,20 @@ async def create_status_check(input: StatusCheckCreate):
 async def get_status_checks():
     status_checks = await db.status_checks.find().to_list(1000)
     return [StatusCheck(**status_check) for status_check in status_checks]
+
+@api_router.post("/spotify/search", response_model=SpotifyTrackResponse)
+async def search_spotify_track(request: SpotifySearchRequest):
+    """Search for a track on Spotify and return metadata including album art"""
+    try:
+        result = spotify_service.search_track(request.artist, request.title)
+        if result:
+            return SpotifyTrackResponse(**result)
+        else:
+            # Return empty response if no results found
+            return SpotifyTrackResponse()
+    except Exception as e:
+        logging.error(f"Error in Spotify search endpoint: {e}")
+        raise HTTPException(status_code=500, detail="Failed to search Spotify")
 
 # Include the router in the main app
 app.include_router(api_router)
