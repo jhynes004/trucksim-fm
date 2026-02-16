@@ -174,6 +174,8 @@ async def get_recently_played(limit: int = 5):
         formatted = []
         for item in items:
             formatted.append({
+                "id": item.get("id"),
+                "documentId": item.get("documentId"),
                 "artist": item.get("artist", "Unknown"),
                 "song": item.get("song", "Unknown"),
                 "artwork_url": item.get("artwork_url"),
@@ -190,6 +192,43 @@ async def get_recently_played(limit: int = 5):
         return {
             "success": False,
             "data": [],
+            "error": str(e)
+        }
+
+@api_router.post("/like-song/{document_id}")
+async def like_song(document_id: str):
+    """Increment like count for a song on TruckSimFM"""
+    import requests
+    try:
+        # First, get the current song data to get the current like count
+        get_response = requests.get(
+            f'https://www.trucksim.fm/api/playlists/{document_id}',
+            timeout=10
+        )
+        get_response.raise_for_status()
+        song_data = get_response.json()
+        
+        current_likes = song_data.get('data', {}).get('likes', 0) or 0
+        new_likes = current_likes + 1
+        
+        # Update the like count
+        update_response = requests.put(
+            f'https://www.trucksim.fm/api/playlists/{document_id}',
+            json={"data": {"likes": new_likes}},
+            timeout=10
+        )
+        update_response.raise_for_status()
+        
+        logger.info(f"Liked song {document_id}: {current_likes} -> {new_likes}")
+        
+        return {
+            "success": True,
+            "likes": new_likes
+        }
+    except Exception as e:
+        logger.error(f"Error liking song {document_id}: {e}")
+        return {
+            "success": False,
             "error": str(e)
         }
 
