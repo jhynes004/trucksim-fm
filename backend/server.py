@@ -129,6 +129,102 @@ async def get_current_song():
             "data": "TruckSimFM - Live Radio"
         }
 
+@api_router.get("/live-presenter")
+async def get_live_presenter():
+    """Scrape the TruckSimFM website to get the current live presenter"""
+    import requests
+    try:
+        response = requests.get(
+            'https://www.trucksim.fm',
+            timeout=10,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        )
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'lxml')
+        
+        # Look for the live presenter info
+        # The website structure shows: LIVE NOW... followed by presenter image and name
+        live_section = soup.find(string=re.compile('LIVE NOW', re.IGNORECASE))
+        
+        presenter_name = None
+        show_name = None
+        show_description = None
+        photo_url = None
+        is_auto_dj = False
+        
+        if live_section:
+            # Find the parent container and look for presenter info
+            parent = live_section.find_parent('div') if live_section else None
+            
+            # Try to find presenter name - it's usually in an image alt or nearby text
+            # Look for images with presenter photos
+            img_tags = soup.find_all('img')
+            for img in img_tags:
+                alt = img.get('alt', '')
+                src = img.get('src', '')
+                # Check if this is a presenter image (has username as alt)
+                if alt and 'TSFM' not in alt and 'Chart' not in alt and 'logo' not in alt.lower():
+                    # Check if the image is in the live section (not in recently played)
+                    parent_classes = ' '.join(img.find_parent('div').get('class', []) if img.find_parent('div') else [])
+                    if 'recently' not in parent_classes.lower():
+                        presenter_name = alt
+                        if 'trucksim.fm' in src or '_next/image' in src:
+                            photo_url = src
+                        break
+        
+        # If we found a presenter, try to find the show name
+        if presenter_name:
+            # Look for h2 elements that might contain show name
+            h2_tags = soup.find_all('h2')
+            for h2 in h2_tags:
+                text = h2.get_text(strip=True)
+                if text and 'Upcoming' not in text and 'Featured' not in text:
+                    show_name = text
+                    break
+            
+            # Look for "Live until" text for description
+            live_until = soup.find(string=re.compile('Live until', re.IGNORECASE))
+            if live_until:
+                show_description = live_until.strip()
+        
+        # Check if it's the auto-DJ (DJ Cruise Control)
+        if presenter_name and 'cruise control' in presenter_name.lower():
+            is_auto_dj = True
+        elif not presenter_name:
+            # Default to auto-DJ if we couldn't find a presenter
+            presenter_name = 'DJ Cruise Control'
+            show_name = 'Auto DJ'
+            show_description = 'Full throttle tunes...'
+            is_auto_dj = True
+        
+        logger.info(f"Scraped live presenter: {presenter_name}, Show: {show_name}")
+        
+        return {
+            "success": True,
+            "data": {
+                "name": presenter_name,
+                "show_name": show_name or f"Live with {presenter_name}",
+                "description": show_description or "",
+                "photo_url": photo_url,
+                "is_auto_dj": is_auto_dj
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error scraping live presenter: {e}")
+        return {
+            "success": True,
+            "data": {
+                "name": "DJ Cruise Control",
+                "show_name": "Auto DJ",
+                "description": "Full throttle tunes...",
+                "photo_url": None,
+                "is_auto_dj": True
+            }
+        }
+
 @api_router.get("/schedule")
 async def get_schedule():
     """Proxy endpoint to fetch schedule from TruckSimFM (avoids CORS issues)"""
