@@ -125,9 +125,6 @@ export default function RadioScreen() {
   const [showSleepModal, setShowSleepModal] = useState(false);
   const sleepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
-  // Like state - track which songs the user has liked this session
-  const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
-  
   const songUpdateInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const presenterUpdateInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const recentlyPlayedInterval = useRef<ReturnType<typeof setInterval> | null>(null);
