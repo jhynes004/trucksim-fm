@@ -88,6 +88,31 @@ async def search_spotify_track(request: SpotifySearchRequest):
         logging.error(f"Error in Spotify search endpoint: {e}")
         raise HTTPException(status_code=500, detail="Failed to search Spotify")
 
+@api_router.get("/current-song")
+async def get_current_song():
+    """Proxy endpoint to fetch current song from TruckSimFM (avoids CORS issues)"""
+    import requests
+    try:
+        response = requests.get(
+            'https://radio.trucksim.fm:8000/currentsong?sid=1',
+            timeout=5
+        )
+        response.raise_for_status()
+        song_text = response.text.strip()
+        
+        logger.info(f"Fetched current song: {song_text}")
+        
+        return {
+            "success": True,
+            "data": song_text
+        }
+    except Exception as e:
+        logger.error(f"Error fetching current song: {e}")
+        return {
+            "success": False,
+            "data": "TruckSimFM - Live Radio"
+        }
+
 # Include the router in the main app
 app.include_router(api_router)
 
