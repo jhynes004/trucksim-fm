@@ -18,7 +18,7 @@ Build a mobile application for the online radio station `trucksim.fm` with the f
 - **Frontend**: Expo (React Native) with TypeScript
 - **Backend**: FastAPI (Python) as BFF proxy
 - **Database**: None (uses external APIs)
-- **Key Libraries**: expo-av, expo-router, react-native-reanimated, react-native-webview, spotipy
+- **Key Libraries**: expo-av, expo-router, react-native-reanimated, react-native-webview, expo-haptics, spotipy
 
 ## What's Been Implemented
 
@@ -30,24 +30,37 @@ Build a mobile application for the online radio station `trucksim.fm` with the f
 5. **Socials Tab**: Links to WhatsApp, Discord, Facebook, X with official logos
 6. **Branding**: Custom app icon and splash screen
 
-### Polish Items (Session Feb 16, 2026)
+### Session Feb 16, 2026 - Part 1 (Safe Area Fix)
 1. **Safe Area Navigation Fix**: All tabs now use `useSafeAreaInsets()` to prevent content from being hidden behind device navigation bars
-2. **Live Presenter Feature**: New `presenterService.ts` displays current DJ or "DJ Cruise Control" (auto-DJ) based on schedule data
-3. **Placeholder Album Art**: TSFM logo displayed on turntable before Spotify art loads
+2. **Placeholder Album Art**: TruckSimFM logo displayed on turntable before Spotify art loads
 
-## Files Modified (Feb 16, 2026)
-- `/app/frontend/app/(tabs)/_layout.tsx` - Added safe area insets for tab bar
-- `/app/frontend/app/(tabs)/radio.tsx` - Added live presenter banner, placeholder image, safe area padding
-- `/app/frontend/app/(tabs)/request.tsx` - Added safe area padding
-- `/app/frontend/app/(tabs)/schedule.tsx` - Added safe area padding
-- `/app/frontend/app/(tabs)/socials.tsx` - Added safe area padding
-- `/app/frontend/app/(tabs)/stats.tsx` - Added safe area padding
-- `/app/frontend/services/presenterService.ts` - NEW: Service to fetch live presenter from schedule
+### Session Feb 16, 2026 - Part 2 (Enhancements)
+1. **Live Presenter Feature**: Created `presenterService.ts` that calculates the current live DJ based on schedule data and UTC time comparison. Shows "DJ Cruise Control" when no show is live.
+2. **Recently Played Section**: Added `recentlyPlayedService.ts` and backend endpoint `/api/recently-played` that fetches the last 5 played songs with album art from the TruckSimFM playlist API.
+3. **Haptic Feedback**: Added `expo-haptics` to play/stop button, request form submit, clear form, and social links for tactile feedback on button presses.
+
+## Files Modified (Feb 16, 2026 - Part 2)
+- `/app/backend/server.py` - Added `/api/recently-played` endpoint
+- `/app/frontend/services/presenterService.ts` - NEW: Live presenter detection from schedule
+- `/app/frontend/services/recentlyPlayedService.ts` - NEW: Recently played tracks service
+- `/app/frontend/app/(tabs)/radio.tsx` - Added presenter banner, recently played section, haptics, ScrollView
+- `/app/frontend/app/(tabs)/request.tsx` - Added haptic feedback on submit and clear
+- `/app/frontend/app/(tabs)/socials.tsx` - Added haptic feedback on social link clicks
 
 ## API Endpoints
 - `GET /api/current-song` - Proxies TruckSimFM current song
 - `GET /api/schedule` - Proxies TruckSimFM schedule with presenter data
 - `POST /api/spotify/search` - Searches Spotify for track metadata
+- `GET /api/recently-played?limit=5` - Returns recently played songs with artwork
+
+## How Live Presenter Detection Works
+The presenter service:
+1. Fetches the schedule data from `/api/schedule`
+2. For each permanent (recurring) show, checks if:
+   - The day of week matches (using `getUTCDay()`: 0=Sun, 1=Mon, etc.)
+   - The current UTC time is within the show's time slot
+3. If a match is found, returns the presenter's username and show name
+4. If no show is live, returns "DJ Cruise Control" as the auto-DJ
 
 ## Remaining Tasks
 
@@ -59,10 +72,14 @@ Build a mobile application for the online radio station `trucksim.fm` with the f
 
 ### P2 - Nice to Have
 - Font loading error investigation (Ionicons.ttf early warning)
-- Add haptic feedback on button presses
 
 ## Deployment Notes
 - Backend deployed at: https://trucksim-radio-1.preview.emergentagent.com
 - EAS configured in `/app/frontend/eas.json`
 - User must run `eas build` on their local machine with EAS CLI
 - See `/app/DEPLOYMENT.md` for detailed instructions
+
+## Testing Notes
+Since this is a React Native/Expo app, browser-based testing isn't possible. The user must test on their physical device via:
+1. Expo Go app (development)
+2. APK/IPA build (production)
