@@ -26,7 +26,7 @@ import { Colors } from '../../constants/colors';
 import { getCurrentSong, CurrentSong } from '../../services/radioService';
 import { searchSpotifyTrack, SpotifyTrack } from '../../services/spotifyService';
 import { getLivePresenter, LivePresenter } from '../../services/presenterService';
-import { getRecentlyPlayed, formatPlayedTime, likeSong, RecentlyPlayedTrack } from '../../services/recentlyPlayedService';
+import { getRecentlyPlayed, formatPlayedTime, RecentlyPlayedTrack } from '../../services/recentlyPlayedService';
 
 const { width } = Dimensions.get('window');
 const TURNTABLE_SIZE = width * 0.55;
