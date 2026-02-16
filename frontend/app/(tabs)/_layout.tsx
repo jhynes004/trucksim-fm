@@ -193,7 +193,7 @@ export default function TabLayout() {
         name="socials"
         options={{
           title: 'Socials',
-          tabBarIcon: ({ color }) => <ShareIcon color={color} />,
+          tabBarIcon: ({ color }) => <SocialsIcon color={color} />,
         }}
       />
     </Tabs>
