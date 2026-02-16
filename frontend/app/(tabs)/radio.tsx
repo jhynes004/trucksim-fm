@@ -908,7 +908,7 @@ const styles = StyleSheet.create({
   recentTrackRight: {
     alignItems: 'flex-end',
   },
-  likeButton: {
+  likeDisplay: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
