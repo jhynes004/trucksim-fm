@@ -56,22 +56,54 @@ export default function RequestScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const sendViaWhatsApp = () => {
-    if (!artistName.trim() || !songTitle.trim()) {
-      Alert.alert('Required Fields', 'Please enter at least the artist and song title.');
-      return;
+    let whatsappMessage = '';
+    let isValid = false;
+
+    switch (requestType) {
+      case 'song':
+        // Song Request: Artist + Song + Name + Message
+        if (!artistName.trim() || !songTitle.trim()) {
+          Alert.alert('Required Fields', 'Please enter the artist and song title.');
+          return;
+        }
+        isValid = true;
+        whatsappMessage = `🎵 Song Request\n\n`;
+        whatsappMessage += `Artist: ${artistName}\n`;
+        whatsappMessage += `Song: ${songTitle}\n`;
+        if (yourName.trim()) {
+          whatsappMessage += `From: ${yourName}\n`;
+        }
+        if (message.trim()) {
+          whatsappMessage += `\nMessage: ${message}`;
+        }
+        break;
+
+      case 'shoutout':
+        // Shout-out: Name + Message
+        if (!yourName.trim() || !message.trim()) {
+          Alert.alert('Required Fields', 'Please enter your name and message for the shout-out.');
+          return;
+        }
+        isValid = true;
+        whatsappMessage = `📣 Shout-out\n\n`;
+        whatsappMessage += `From: ${yourName}\n`;
+        whatsappMessage += `\nMessage: ${message}`;
+        break;
+
+      case 'competition':
+        // Competition Entry: Just message (with WIN prefix)
+        if (!message.trim()) {
+          Alert.alert('Required Fields', 'Please enter your competition answer.');
+          return;
+        }
+        isValid = true;
+        whatsappMessage = `🏆 Competition Entry\n\n`;
+        whatsappMessage += `WIN ${message}`;
+        break;
     }
 
-    // Build the WhatsApp message
-    let whatsappMessage = `🎵 Song Request\n\n`;
-    whatsappMessage += `Artist: ${artistName}\n`;
-    whatsappMessage += `Song: ${songTitle}\n`;
-    
-    if (yourName.trim()) {
-      whatsappMessage += `From: ${yourName}\n`;
-    }
-    
-    if (message.trim()) {
-      whatsappMessage += `\nMessage: ${message}`;
+    if (!isValid) {
+      return;
     }
 
     const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(whatsappMessage)}`;
