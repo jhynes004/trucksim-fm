@@ -588,18 +588,13 @@ export default function RadioScreen() {
                 </Text>
               </View>
               <View style={styles.recentTrackRight}>
-                <TouchableOpacity 
-                  style={styles.likeButton}
-                  onPress={() => handleLikeSong(track)}
-                  data-testid={`like-button-${track.documentId}`}
-                >
-                  <Text style={[
-                    styles.likeText,
-                    likedSongs.has(track.documentId) && styles.likedText
-                  ]}>
-                    👍 {track.likes}
-                  </Text>
-                </TouchableOpacity>
+                {track.likes > 0 && (
+                  <View style={styles.likeDisplay}>
+                    <Text style={styles.likeText}>
+                      👍 {track.likes}
+                    </Text>
+                  </View>
+                )}
                 <Text style={styles.recentTrackTime}>
                   {formatPlayedTime(track.played_at)}
                 </Text>
