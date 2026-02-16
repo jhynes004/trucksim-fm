@@ -919,9 +919,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textMuted,
   },
-  likedText: {
-    color: Colors.primary,
-  },
   recentTrackTime: {
     fontSize: 10,
     color: Colors.textMuted,
