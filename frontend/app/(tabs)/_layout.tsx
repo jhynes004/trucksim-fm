@@ -3,47 +3,74 @@ import { View, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
 
-// Simple icon components using basic shapes
+// Radio icon - looks like an old-fashioned radio with antenna
 const RadioIcon = ({ color }: { color: string }) => (
   <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
+    {/* Antenna */}
+    <View style={{
+      position: 'absolute',
+      top: 0,
+      left: 6,
+      width: 2,
+      height: 8,
+      backgroundColor: color,
+      transform: [{ rotate: '-30deg' }],
+    }} />
+    {/* Radio body */}
     <View style={{
       width: 20,
-      height: 20,
-      borderRadius: 10,
+      height: 14,
       borderWidth: 2,
       borderColor: color,
+      borderRadius: 3,
+      marginTop: 6,
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 2,
     }}>
+      {/* Speaker grille */}
+      <View style={{ flexDirection: 'column', gap: 1 }}>
+        <View style={{ width: 6, height: 1, backgroundColor: color }} />
+        <View style={{ width: 6, height: 1, backgroundColor: color }} />
+        <View style={{ width: 6, height: 1, backgroundColor: color }} />
+      </View>
+      {/* Dial */}
       <View style={{
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: color,
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        borderWidth: 1.5,
+        borderColor: color,
       }} />
     </View>
   </View>
 );
 
-const MusicNoteIcon = ({ color }: { color: string }) => (
+// Mail/Envelope icon for request
+const MailIcon = ({ color }: { color: string }) => (
   <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
     <View style={{
-      width: 16,
-      height: 20,
-      borderLeftWidth: 3,
-      borderLeftColor: color,
-      borderTopWidth: 3,
-      borderTopColor: color,
-      borderTopLeftRadius: 8,
+      width: 20,
+      height: 14,
+      borderWidth: 2,
+      borderColor: color,
+      borderRadius: 2,
+      position: 'relative',
     }}>
+      {/* Envelope flap */}
       <View style={{
         position: 'absolute',
-        bottom: -4,
-        left: -6,
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: color,
+        top: -1,
+        left: 2,
+        width: 0,
+        height: 0,
+        borderLeftWidth: 6,
+        borderRightWidth: 6,
+        borderTopWidth: 6,
+        borderLeftColor: 'transparent',
+        borderRightColor: 'transparent',
+        borderTopColor: color,
       }} />
     </View>
   </View>
@@ -168,7 +195,7 @@ export default function TabLayout() {
         name="request"
         options={{
           title: 'Request',
-          tabBarIcon: ({ color }) => <MusicNoteIcon color={color} />,
+          tabBarIcon: ({ color }) => <MailIcon color={color} />,
         }}
       />
       <Tabs.Screen
