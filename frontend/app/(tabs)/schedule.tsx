@@ -100,20 +100,14 @@ export default function ScheduleScreen() {
     const targetDate = new Date(today);
     targetDate.setDate(today.getDate() + daysToAdd);
     targetDate.setHours(0, 0, 0, 0);
-    
-    const targetDateEnd = new Date(targetDate);
-    targetDateEnd.setHours(23, 59, 59, 999);
 
-    console.log('Filtering for date:', targetDate.toISOString());
+    console.log('Filtering for date:', targetDate.toISOString(), 'dayIndex:', dayIndex);
 
     // Filter shows
     const filtered = schedule.filter((show) => {
       const showDate = new Date(show.start_time);
       const showDateOnly = new Date(showDate);
       showDateOnly.setHours(0, 0, 0, 0);
-      
-      // Check if show date matches target date
-      const isSameDate = showDateOnly.getTime() === targetDate.getTime();
       
       // For permanent shows, check if they occur on this day of week
       // and are not in excluded dates
@@ -134,14 +128,17 @@ export default function ScheduleScreen() {
       }
       
       // For non-permanent shows, only show if the date matches exactly
+      const isSameDate = showDateOnly.getTime() === targetDate.getTime();
       return isSameDate;
     });
 
-    // Sort by start time
+    // Sort by start time (by hour/minute, not full timestamp)
     filtered.sort((a, b) => {
-      const timeA = new Date(a.start_time).getTime();
-      const timeB = new Date(b.start_time).getTime();
-      return timeA - timeB;
+      const timeA = new Date(a.start_time);
+      const timeB = new Date(b.start_time);
+      const hourMinA = timeA.getUTCHours() * 60 + timeA.getUTCMinutes();
+      const hourMinB = timeB.getUTCHours() * 60 + timeB.getUTCMinutes();
+      return hourMinA - hourMinB;
     });
 
     console.log(`Found ${filtered.length} shows for ${DAYS[dayIndex]}`);
