@@ -65,17 +65,21 @@ Added `react-native-track-player` plugin to `app.json` with critical Android con
 - Dedicated `playbackService.js` for background event handling
 - `trackPlayerService.ts` with `AppKilledPlaybackBehavior.ContinuePlayback`
 
-## Next Steps for User
-**CRITICAL: A new APK build is required to test background audio.**
+## Deployment Status
+**Backend:** Ready for Emergent deployment ✅
+**Mobile App:** Build APK separately using EAS Build
 
-To test the background audio fix:
-1. Run `eas build --profile development --platform android`
-2. Install the new APK on your device
-3. Play the stream and:
-   - Lock your phone - music should continue
-   - Check notification shade - should show TruckSimFM with Play/Pause controls
-   - Swipe away the app - music should continue
-   - Use notification controls to pause/play
+### After Deployment:
+1. Note the deployed backend URL (e.g., `https://your-app.emergentagent.com`)
+2. Update your mobile app's `EXPO_PUBLIC_BACKEND_URL` to point to the deployed URL
+3. Build new APK: `eas build --profile development --platform android`
+4. Install APK and test
+
+### Background Audio Testing:
+After installing new APK:
+- Play the stream and lock your phone - music should continue
+- Check notification shade - should show TruckSimFM with Play/Pause controls
+- Swipe away the app - music should continue
 
 ## Files Modified This Session
 - `/app/frontend/app.json` - Added expo-build-properties plugin
