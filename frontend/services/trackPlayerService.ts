@@ -26,8 +26,6 @@ export const setupPlayer = async (): Promise<boolean> => {
         android: {
           // Continue playback even when the app is killed
           appKilledPlaybackBehavior: AppKilledPlaybackBehavior.ContinuePlayback,
-          // Don't pause when app goes to background
-          stoppingAppPausesPlayback: false,
         },
         // What controls to show in notification/lock screen
         capabilities: [
