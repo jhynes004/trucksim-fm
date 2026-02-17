@@ -58,6 +58,7 @@
     },
     "plugins": [
       "expo-router",
+      "./plugins/withTrackPlayerPatch.js",
       [
         "expo-splash-screen",
         {
