@@ -9,7 +9,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "preinstall": "node apply-custom-patches.js 2>/dev/null || true",
+    "prepare": "node apply-custom-patches.js 2>/dev/null || true",
     "postinstall": "npx patch-package --patch-dir patches 2>/dev/null; node apply-custom-patches.js 2>/dev/null || true"
   },
   "expo": {
