@@ -85,8 +85,13 @@ async def create_status_check(input: StatusCheckCreate):
     return status_obj
 
 @api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    status_checks = await db.status_checks.find().to_list(1000)
+async def get_status_checks(skip: int = 0, limit: int = 100):
+    # Limit max results to prevent performance issues
+    safe_limit = min(limit, 100)
+    status_checks = await db.status_checks.find(
+        {}, 
+        {"_id": 0}
+    ).sort("timestamp", -1).skip(skip).limit(safe_limit).to_list(None)
     return [StatusCheck(**status_check) for status_check in status_checks]
 
 @api_router.post("/spotify/search", response_model=SpotifyTrackResponse)
