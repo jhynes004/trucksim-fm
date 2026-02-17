@@ -77,6 +77,15 @@
             "usesCleartextTraffic": true
           }
         }
+      ],
+      [
+        "react-native-track-player",
+        {
+          "android": {
+            "foregroundServiceType": "mediaPlayback",
+            "stopWithTask": false
+          }
+        }
       ]
     ],
     "experiments": {
