@@ -40,6 +40,10 @@
         "FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "WAKE_LOCK"
       ],
+      "queries": {
+        "schemes": ["https", "whatsapp"],
+        "package": ["com.whatsapp", "com.whatsapp.w4b"]
+      },
       "intentFilters": [
         {
           "action": "VIEW",
