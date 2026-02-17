@@ -69,6 +69,26 @@ Added `react-native-track-player` plugin to `app.json` with critical Android con
 **Backend:** Ready for Emergent deployment ✅
 **Mobile App:** Build APK separately using EAS Build
 
+### EAS Build Fix (February 2026)
+**Issue:** `EAS_BUILD_UNKNOWN_GRADLE_ERROR` - Gradle build failed because `react-native-reanimated 4.x` requires New Architecture, but `react-native-track-player 4.1.1` does NOT support New Architecture.
+
+**Root Cause:**
+- `react-native-reanimated ~4.1.1` REQUIRES `newArchEnabled: true`
+- `react-native-track-player 4.1.1` does NOT support New Architecture
+- `app.json` has `newArchEnabled: false` (required for track-player)
+
+**Solution Applied:**
+1. Downgraded `react-native-reanimated` from `~4.1.1` to `~3.17.5` (works with Legacy Architecture)
+2. Removed `react-native-worklets` (only needed for reanimated 4.x)
+3. Fixed `@types/react` version to `~19.1.10` (per expo-doctor)
+4. Removed `package-lock.json` (project uses yarn)
+5. Added `react-native-reanimated` to `expo.install.exclude` in package.json
+
+**Configuration:**
+- `newArchEnabled: false` in `app.json` (required for background audio)
+- `react-native-reanimated: ~3.17.5` (compatible with Legacy Architecture)
+- Expo SDK 54 is the LAST SDK supporting Legacy Architecture
+
 ### After Deployment:
 1. Note the deployed backend URL (e.g., `https://your-app.emergentagent.com`)
 2. Update your mobile app's `EXPO_PUBLIC_BACKEND_URL` to point to the deployed URL
@@ -82,11 +102,11 @@ After installing new APK:
 - Swipe away the app - music should continue
 
 ## Files Modified This Session
-- `/app/frontend/app.json` - Added expo-build-properties plugin
+- `/app/frontend/app.json` - Added expo-build-properties plugin, newArchEnabled: false
+- `/app/frontend/package.json` - Downgraded reanimated to 3.17.5, removed worklets, fixed @types/react
 - `/app/frontend/services/trackPlayerService.ts` - Enhanced Android config
-- `/app/frontend/services/playbackService.js` - New dedicated background service
+- `/app/frontend/services/playbackService.js` - Dedicated background service
 - `/app/frontend/index.js` - Updated service registration
-- `/app/frontend/package.json` - Added expo-build-properties dependency
 
 ## API Endpoints
 - `GET /api/current_song` - Current song info
