@@ -21,7 +21,8 @@
     },
     "install": {
       "exclude": [
-        "react-native-reanimated"
+        "react-native-reanimated",
+        "@expo/config-plugins"
       ]
     }
   },
