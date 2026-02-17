@@ -41,25 +41,29 @@ Build a mobile application for the online radio station `trucksim.fm` with:
 - [x] SafeAreaView for device notch/navigation handling
 
 ## Latest Update (December 2025)
-### Background Audio Implementation Complete
-Fixed background audio playback with notification/lock-screen controls:
+### Background Audio Implementation - Fix #2
+Added `react-native-track-player` plugin to `app.json` with critical Android configuration:
 
-1. **Added `expo-build-properties` plugin** to `app.json`:
-   - iOS: `usesAudioBackgroundMode: true`
-   - Android: `usesCleartextTraffic: true`
+```json
+[
+  "react-native-track-player",
+  {
+    "android": {
+      "foregroundServiceType": "mediaPlayback",
+      "stopWithTask": false
+    }
+  }
+]
+```
 
-2. **Created dedicated `playbackService.js`** for background event handling:
-   - Handles RemotePlay, RemotePause, RemoteStop events
-   - Handles audio interruptions (RemoteDuck)
-   - Handles playback errors and state changes
+**Key settings:**
+- `stopWithTask: false` - Service continues when app is swiped away/killed
+- `foregroundServiceType: "mediaPlayback"` - Required for Android 12+ background audio
 
-3. **Updated `trackPlayerService.ts`** with proper Android config:
-   - `appKilledPlaybackBehavior: ContinuePlayback`
-   - `stoppingAppPausesPlayback: false`
-   - Notification capabilities: Play, Pause, Stop
-
-4. **Updated `index.js`** entry point:
-   - Registers playback service before React renders
+**Previous changes still in place:**
+- `expo-build-properties` with `usesAudioBackgroundMode` (iOS) and `usesCleartextTraffic` (Android)
+- Dedicated `playbackService.js` for background event handling
+- `trackPlayerService.ts` with `AppKilledPlaybackBehavior.ContinuePlayback`
 
 ## Next Steps for User
 **CRITICAL: A new APK build is required to test background audio.**
