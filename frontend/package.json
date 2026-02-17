@@ -17,6 +17,11 @@
           "react-native-track-player"
         ]
       }
+    },
+    "install": {
+      "exclude": [
+        "react-native-reanimated"
+      ]
     }
   },
   "dependencies": {
