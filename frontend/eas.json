@@ -26,6 +26,13 @@
       "ios": {
         "simulator": false
       }
+    },
+    "app-bundle": {
+      "android": {
+        "buildType": "app-bundle",
+        "gradleCommand": ":app:bundleRelease"
+      },
+      "distribution": "store"
     }
   },
   "submit": {
