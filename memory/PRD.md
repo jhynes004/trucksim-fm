@@ -124,6 +124,7 @@ After installing new APK:
 - X/Twitter link: Fix implemented, pending user verification in new APK build
 
 ## Backlog
+- [x] Fix EAS Build Gradle error (react-native-reanimated 4.x / New Architecture conflict)
 - [ ] User verification of background audio in APK build
 - [ ] User verification of X/Twitter link in APK build
 - [ ] App store deployment guidance (when ready)
