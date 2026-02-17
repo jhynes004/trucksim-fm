@@ -58,7 +58,7 @@ export default function RequestScreen() {
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const sendViaWhatsApp = () => {
+  const sendViaWhatsApp = async () => {
     let whatsappMessage = '';
     let isValid = false;
 
@@ -109,20 +109,32 @@ export default function RequestScreen() {
       return;
     }
 
-    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(whatsappMessage)}`;
+    const phoneNumber = WHATSAPP_NUMBER.replace(/[^0-9]/g, '');
+    const encodedMessage = encodeURIComponent(whatsappMessage);
+    
+    // Try different WhatsApp URL schemes
+    const whatsappUrls = [
+      `whatsapp://send?phone=${phoneNumber}&text=${encodedMessage}`,
+      `https://wa.me/${phoneNumber}?text=${encodedMessage}`,
+    ];
 
-    Linking.canOpenURL(whatsappUrl)
-      .then((supported) => {
-        if (supported) {
-          return Linking.openURL(whatsappUrl);
-        } else {
-          Alert.alert('Error', 'WhatsApp is not installed on this device');
-        }
-      })
-      .catch((err) => {
-        console.error('Error opening WhatsApp:', err);
-        Alert.alert('Error', 'Failed to open WhatsApp');
-      });
+    // Try to open WhatsApp directly without checking first
+    // (canOpenURL is unreliable on Android 11+)
+    try {
+      // First try the whatsapp:// scheme (works best when app is installed)
+      await Linking.openURL(whatsappUrls[0]);
+    } catch (error1) {
+      try {
+        // Fall back to https://wa.me/ (universal link)
+        await Linking.openURL(whatsappUrls[1]);
+      } catch (error2) {
+        console.error('Error opening WhatsApp:', error2);
+        Alert.alert(
+          'Unable to Open WhatsApp',
+          'Please make sure WhatsApp is installed on your device. You can also manually message us at ' + WHATSAPP_NUMBER
+        );
+      }
+    }
   };
 
   const handleSubmit = async () => {
