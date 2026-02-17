@@ -10,6 +10,13 @@
     "web": "expo start --web",
     "lint": "expo lint"
   },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": ["react-native-track-player"]
+      }
+    }
+  },
   "dependencies": {
     "@babel/runtime": "^7.20.6",
     "@expo/metro-runtime": "^6.1.2",
